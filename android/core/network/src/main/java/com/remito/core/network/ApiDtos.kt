@@ -14,8 +14,26 @@ data class ProblemDetailsDto(
     val traceId: String? = null,
 )
 
+enum class OtpChannel {
+    @Json(name = "email")
+    EMAIL,
+
+    @Json(name = "phone")
+    PHONE,
+}
+
 @JsonClass(generateAdapter = false)
-data class TokenRequest(val idToken: String)
+data class OtpRequest(val channel: OtpChannel, val destination: String)
+
+@JsonClass(generateAdapter = false)
+data class OtpVerificationRequest(
+    val channel: OtpChannel,
+    val destination: String,
+    val code: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class OtpRequestResponse(val accepted: Boolean)
 
 @JsonClass(generateAdapter = false)
 data class RefreshRequest(val refreshToken: String)
@@ -37,7 +55,42 @@ enum class DevicePlatform {
 }
 
 @JsonClass(generateAdapter = false)
-data class DeviceRegistration(val fcmToken: String, val platform: DevicePlatform)
+data class DeviceRegistrationRequest(val fcmToken: String, val platform: DevicePlatform)
+
+@JsonClass(generateAdapter = false)
+data class UserProfileDto(
+    val id: String,
+    val email: String? = null,
+    val phoneNumber: String? = null,
+    val displayName: String? = null,
+    val roles: List<String>,
+    val createdAt: String,
+)
+
+@JsonClass(generateAdapter = false)
+data class ProfileUpdateRequest(val displayName: String)
+
+enum class ConsentType {
+    @Json(name = "terms")
+    TERMS,
+
+    @Json(name = "privacy")
+    PRIVACY,
+
+    @Json(name = "marketing")
+    MARKETING,
+}
+
+@JsonClass(generateAdapter = false)
+data class ConsentRequest(val isGranted: Boolean, val version: String)
+
+@JsonClass(generateAdapter = false)
+data class ConsentStateDto(
+    val type: ConsentType,
+    val version: String,
+    val isGranted: Boolean,
+    val updatedAt: String,
+)
 
 @JsonClass(generateAdapter = false)
 data class DeviceDto(val id: String, val platform: DevicePlatform, val createdAt: String)

@@ -66,7 +66,7 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(log => log.Action).HasMaxLength(100).IsRequired();
         builder.Property(log => log.EntityType).HasMaxLength(200).IsRequired();
         builder.Property(log => log.EntityId).HasMaxLength(200);
-        builder.Property(log => log.Details).HasColumnType("nvarchar(max)");
+        builder.Property(log => log.Details);
         builder.HasIndex(log => new { log.EntityType, log.EntityId, log.CreatedAt });
         builder.HasIndex(log => new { log.UserId, log.CreatedAt });
         builder.HasOne(log => log.User).WithMany().HasForeignKey(log => log.UserId)

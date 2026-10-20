@@ -6,13 +6,17 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import java.math.BigDecimal
 
 interface RemitoApi {
-    @POST("auth/token")
-    suspend fun createToken(@Body request: TokenRequest): Response<TokenResponse>
+    @POST("auth/otp/request")
+    suspend fun requestOtp(@Body request: OtpRequest): Response<OtpRequestResponse>
+
+    @POST("auth/otp/verify")
+    suspend fun verifyOtp(@Body request: OtpVerificationRequest): Response<TokenResponse>
 
     @POST("auth/refresh")
     suspend fun refreshToken(@Body request: RefreshRequest): Response<TokenResponse>
@@ -20,11 +24,32 @@ interface RemitoApi {
     @POST("auth/logout")
     suspend fun logout(@Body request: RefreshRequest): Response<Unit>
 
+    @GET("me")
+    suspend fun getMe(): Response<UserProfileDto>
+
+    @PATCH("me")
+    suspend fun updateMe(@Body request: ProfileUpdateRequest): Response<UserProfileDto>
+
+    @DELETE("me")
+    suspend fun deleteMe(): Response<Unit>
+
+    @GET("me/consents")
+    suspend fun getConsents(): Response<List<ConsentStateDto>>
+
+    @PUT("me/consents/terms")
+    suspend fun acceptTerms(@Body request: ConsentRequest): Response<ConsentStateDto>
+
+    @PUT("me/consents/privacy")
+    suspend fun acceptPrivacy(@Body request: ConsentRequest): Response<ConsentStateDto>
+
+    @PUT("me/consents/marketing")
+    suspend fun updateMarketingConsent(@Body request: ConsentRequest): Response<ConsentStateDto>
+
     @GET("devices")
     suspend fun listDevices(): Response<List<DeviceDto>>
 
     @POST("devices")
-    suspend fun registerDevice(@Body request: DeviceRegistration): Response<DeviceDto>
+    suspend fun registerDevice(@Body request: DeviceRegistrationRequest): Response<DeviceDto>
 
     @DELETE("devices/{id}")
     suspend fun removeDevice(@Path("id") id: String): Response<Unit>

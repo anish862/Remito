@@ -374,8 +374,13 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("FcmToken")
                         .IsRequired()
-                        .HasMaxLength(4096)
-                        .HasColumnType("nvarchar(4096)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FcmTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsFixedLength()
+                        .HasColumnType("nchar(64)");
 
                     b.Property<string>("Platform")
                         .IsRequired()
@@ -387,7 +392,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FcmToken")
+                    b.HasIndex("FcmTokenHash")
                         .IsUnique();
 
                     b.HasIndex("UserId", "Platform");
@@ -742,6 +747,50 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.ToTable("NewsItems");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.OtpChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DestinationHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("DestinationHash", "CreatedAt");
+
+                    b.ToTable("OtpChallenges");
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.RateHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -891,6 +940,50 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.ToTable("ReferralConversions");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ReplacedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nchar(64)")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReplacedById");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("FamilyId", "RevokedAt");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -916,6 +1009,10 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DeletedAt");
@@ -927,7 +1024,50 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.HasIndex("ExternalId")
                         .IsUnique();
 
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique()
+                        .HasFilter("[PhoneNumber] IS NOT NULL");
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.UserConsent", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsGranted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("UserId", "Type");
+
+                    b.ToTable("UserConsents");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.UserRoleAssignment", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("UserId", "Role");
+
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("Remito.Domain.Entities.AdCreative", b =>
@@ -1127,9 +1267,49 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Navigation("RedirectEvent");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.RefreshToken", null)
+                        .WithMany()
+                        .HasForeignKey("ReplacedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Remito.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.UserConsent", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.UserRoleAssignment", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.User", "User")
+                        .WithMany("Roles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.User", b =>
                 {
                     b.Navigation("Devices");
+
+                    b.Navigation("Roles");
                 });
 #pragma warning restore 612, 618
         }

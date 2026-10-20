@@ -26,26 +26,47 @@ tags:
 security:
   - bearerAuth: []
 paths:
-  /auth/token:
+  /auth/otp/request:
     post:
       tags: [Auth]
-      operationId: createToken
-      summary: Exchange an identity-provider token for a Remito access token
+      operationId: requestOtp
+      summary: Request a passwordless email or phone one-time code
       security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/TokenRequest' }
-            example: { idToken: "eyJhbGciOi..." }
+            schema: { $ref: '#/components/schemas/OtpRequest' }
+            example: { channel: email, destination: "user@example.com" }
+      responses:
+        '202':
+          description: Request accepted without revealing account existence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OtpRequestResponse' }
+              example: { accepted: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyOtp
+      summary: Verify a one-time code and create a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtpVerificationRequest' }
+            example: { channel: email, destination: "user@example.com", code: "123456" }
       responses:
         '200':
-          description: Access and refresh tokens
-          headers: { X-RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }, X-RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }, X-RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' } }
+          description: 15-minute access token and rotating refresh token
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TokenResponse' }
-              example: { accessToken: "eyJ...", refreshToken: "opaque-token", tokenType: Bearer, expiresIn: 3600 }
+              example: { accessToken: "eyJ...", refreshToken: "opaque-token", tokenType: Bearer, expiresIn: 900 }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
@@ -61,14 +82,14 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/RefreshRequest' }
-            example: { refreshToken: "opaque-token" }
+            example: { refreshToken: "opaque-refresh-token-example-000000000000000000000000" }
       responses:
         '200':
           description: Refreshed token pair
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TokenResponse' }
-              example: { accessToken: "eyJ...", refreshToken: "opaque-token-2", tokenType: Bearer, expiresIn: 3600 }
+              example: { accessToken: "eyJ...", refreshToken: "opaque-token-2", tokenType: Bearer, expiresIn: 900 }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/RateLimited' }
         'default': { $ref: '#/components/responses/Problem' }
@@ -77,14 +98,130 @@ paths:
       tags: [Auth]
       operationId: logout
       summary: Revoke the current refresh token
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/RefreshRequest' }
-            example: { refreshToken: "opaque-token" }
+            example: { refreshToken: "opaque-refresh-token-example-000000000000000000000000" }
       responses:
         '204': { description: Token revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Get the authenticated user's profile
+      responses:
+        '200':
+          description: Current profile and role claims
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+              example: { id: "2df427e3-8bb8-49d2-a793-419e5946e544", email: "user@example.com", phoneNumber: null, displayName: "Remito user", roles: [User], createdAt: "2026-10-20T09:00:00Z" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [Auth]
+      operationId: updateCurrentUser
+      summary: Update the authenticated user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileUpdate' }
+            example: { displayName: "Remito user" }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Auth]
+      operationId: deleteCurrentUser
+      summary: Delete the current account and remove personal identifiers
+      responses:
+        '204': { description: Account deleted and analytics identifiers anonymised }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /me/consents:
+    get:
+      tags: [Auth]
+      operationId: getConsents
+      summary: Get current terms, privacy, and marketing consent state
+      responses:
+        '200':
+          description: Consent state
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ConsentState' } }
+              example: [{ type: terms, version: "1", isGranted: true, updatedAt: "2026-10-20T09:00:00Z" }]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /me/consents/terms:
+    put:
+      tags: [Auth]
+      operationId: acceptTerms
+      summary: Record acceptance of the current terms version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRequest' }
+            example: { isGranted: true, version: "1" }
+      responses:
+        '200':
+          description: Consent recorded and audited
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /me/consents/privacy:
+    put:
+      tags: [Auth]
+      operationId: acceptPrivacy
+      summary: Record acceptance of the current privacy notice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRequest' }
+            example: { isGranted: true, version: "1" }
+      responses:
+        '200':
+          description: Consent recorded and audited
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /me/consents/marketing:
+    put:
+      tags: [Auth]
+      operationId: updateMarketingConsent
+      summary: Opt in or out of marketing communications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentRequest' }
+            example: { isGranted: false, version: "1" }
+      responses:
+        '200':
+          description: Consent preference recorded and audited
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         'default': { $ref: '#/components/responses/Problem' }
   /devices:
@@ -886,16 +1023,29 @@ components:
         traceId: { type: string }
       additionalProperties: true
       example: { type: "about:blank", title: "Invalid request", status: 400, detail: "The request is invalid.", instance: "/api/v1/convert" }
-    TokenRequest:
+    OtpRequest:
       type: object
-      required: [idToken]
+      required: [channel, destination]
       properties:
-        idToken: { type: string, minLength: 1, example: "eyJhbGciOi..." }
+        channel: { type: string, enum: [email, phone] }
+        destination: { type: string, minLength: 1, maxLength: 320, description: Email address or E.164 phone number. }
+    OtpVerificationRequest:
+      allOf:
+        - { $ref: '#/components/schemas/OtpRequest' }
+        - type: object
+          required: [code]
+          properties:
+            code: { type: string, pattern: '^[0-9]{6}$' }
+    OtpRequestResponse:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: boolean, const: true }
     RefreshRequest:
       type: object
       required: [refreshToken]
       properties:
-        refreshToken: { type: string, minLength: 1, example: "opaque-token" }
+        refreshToken: { type: string, minLength: 32, maxLength: 128, example: "opaque-refresh-token-example-000000000000000000000000" }
     TokenResponse:
       type: object
       required: [accessToken, refreshToken, tokenType, expiresIn]
@@ -903,7 +1053,38 @@ components:
         accessToken: { type: string }
         refreshToken: { type: string }
         tokenType: { type: string, const: Bearer }
-        expiresIn: { type: integer, minimum: 1 }
+        expiresIn: { type: integer, const: 900, description: Access token lifetime in seconds. }
+    UserProfile:
+      type: object
+      required: [id, roles, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: [string, 'null'], format: email }
+        phoneNumber: { type: [string, 'null'], pattern: '^\\+[1-9][0-9]{7,14}$' }
+        displayName: { type: [string, 'null'] }
+        roles:
+          type: array
+          items: { type: string, enum: [User, Admin, PartnerManager, AdsManager, ReadOnly] }
+        createdAt: { type: string, format: date-time }
+    ProfileUpdate:
+      type: object
+      required: [displayName]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+    ConsentRequest:
+      type: object
+      required: [isGranted, version]
+      properties:
+        isGranted: { type: boolean }
+        version: { type: string, minLength: 1, maxLength: 50 }
+    ConsentState:
+      type: object
+      required: [type, version, isGranted, updatedAt]
+      properties:
+        type: { type: string, enum: [terms, privacy, marketing] }
+        version: { type: string }
+        isGranted: { type: boolean }
+        updatedAt: { type: string, format: date-time }
     DeviceRegistration:
       type: object
       required: [fcmToken, platform]

@@ -93,14 +93,17 @@ Backend is a modular monolith with clean-architecture layers (Domain, Applicatio
 
 ### 1. Start local dependencies
 
-Set a local-only SQL Server password and start the optional development services:
+Set a local-only SQL Server password and start the backend dependencies:
 
 ```bash
 export MSSQL_SA_PASSWORD='Choose_a_local_password_123!'
 docker compose up -d
+dotnet user-secrets set --project backend/Remito.Api "ConnectionStrings:Default" \
+  "Server=localhost,1433;Database=Remito;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+dotnet user-secrets set --project backend/Remito.Api "Redis:ConnectionString" "localhost:6379"
 ```
 
-The API health endpoint works without these services. Database migrations and domain persistence are added in a later step.
+The API requires SQL Server configuration at startup. OTP authentication additionally requires Redis; in Development, requested OTPs are printed by the console sender. Do not use that sender outside local development.
 
 ### 2. Build and test the backend
 
@@ -132,11 +135,14 @@ Never commit secrets. Use user-secrets locally and Key Vault in Azure.
 | Setting | Where | Notes |
 |---|---|---|
 | `ConnectionStrings:Default` | Backend | SQL Server connection |
-| `Redis:ConnectionString` | Backend | Redis endpoint |
-| `Jwt:Issuer`, `Jwt:Audience`, `Jwt:SigningKey` | Backend | Signing key from Key Vault in cloud |
+| `Redis:ConnectionString` | Backend | Required by OTP rate limiting |
+| `Auth:Issuer`, `Auth:Audience`, `Auth:SigningKey` | Backend | JWT issuer/audience and signing key; use Key Vault in cloud |
+| `Auth:OtpHashKey` | Backend | HMAC key for destination and OTP hashes; use Key Vault in cloud |
+| `Auth:RefreshTokenLifetimeDays` | Backend | Rotating refresh token lifetime |
+| `Auth:TermsVersion`, `Auth:PrivacyVersion` | Backend | Current consent document versions |
 | `RateProviders:*` | Backend | Market-rate API key and per-exchange feed settings |
 | `Firebase:ServiceAccount` | Backend | FCM push |
-| `Otp:Provider` | Backend | `console` in dev, SMS/email provider elsewhere |
+| `IOtpSender` implementation | Backend | Console sender in Development; configure a production SMS/email sender |
 | `PartnerPostback:Secrets` | Backend | HMAC secrets per exchange |
 | `API_BASE_URL` | Android `local.properties` / flavour | Per environment |
 | `google-services.json` | Android | Per flavour, not committed |

@@ -252,7 +252,8 @@ namespace Remito.Infrastructure.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FcmToken = table.Column<string>(type: "nvarchar(4096)", maxLength: 4096, nullable: false),
+                    FcmToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FcmTokenHash = table.Column<string>(type: "nchar(64)", fixedLength: true, maxLength: 64, nullable: false),
                     Platform = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
@@ -569,9 +570,9 @@ namespace Remito.Infrastructure.Persistence.Migrations
                 column: "ToCurrency");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Devices_FcmToken",
+                name: "IX_Devices_FcmTokenHash",
                 table: "Devices",
-                column: "FcmToken",
+                column: "FcmTokenHash",
                 unique: true);
 
             migrationBuilder.CreateIndex(

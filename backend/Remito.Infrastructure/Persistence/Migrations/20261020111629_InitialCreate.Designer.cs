@@ -377,8 +377,13 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("FcmToken")
                         .IsRequired()
-                        .HasMaxLength(4096)
-                        .HasColumnType("nvarchar(4096)");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FcmTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsFixedLength()
+                        .HasColumnType("nchar(64)");
 
                     b.Property<string>("Platform")
                         .IsRequired()
@@ -390,7 +395,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FcmToken")
+                    b.HasIndex("FcmTokenHash")
                         .IsUnique();
 
                     b.HasIndex("UserId", "Platform");

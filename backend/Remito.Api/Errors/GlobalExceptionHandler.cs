@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Remito.Application.Auth;
 
 namespace Remito.Api.Errors;
 
@@ -10,6 +11,41 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is AuthOperationException authException)
+        {
+            httpContext.Response.StatusCode = authException.StatusCode;
+            httpContext.Response.ContentType = "application/problem+json";
+            if (authException.StatusCode == StatusCodes.Status429TooManyRequests)
+            {
+                var retryAfter = Math.Max(1, (int)Math.Ceiling(authException.RetryAfter?.TotalSeconds ?? 1));
+                httpContext.Response.Headers.RetryAfter = retryAfter.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                httpContext.Response.Headers["X-RateLimit-Limit"] =
+                    authException.RateLimit?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0";
+                httpContext.Response.Headers["X-RateLimit-Remaining"] =
+                    authException.RateLimitRemaining?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0";
+                httpContext.Response.Headers["X-RateLimit-Reset"] =
+                    DateTimeOffset.UtcNow.AddSeconds(retryAfter).ToUnixTimeSeconds()
+                        .ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            await httpContext.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Status = authException.StatusCode,
+                Title = authException.StatusCode switch
+                {
+                    StatusCodes.Status400BadRequest => "Invalid request",
+                    StatusCodes.Status401Unauthorized => "Unauthorized",
+                    StatusCodes.Status404NotFound => "Not found",
+                    StatusCodes.Status409Conflict => "Conflict",
+                    StatusCodes.Status429TooManyRequests => "Too many requests",
+                    _ => "Request failed"
+                },
+                Detail = authException.Message,
+                Instance = httpContext.Request.Path
+            }, cancellationToken);
+            return true;
+        }
+
         logger.LogError("Unhandled exception for request {TraceId}", httpContext.TraceIdentifier);
 
         var problem = new ProblemDetails

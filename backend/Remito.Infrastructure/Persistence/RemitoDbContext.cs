@@ -7,6 +7,10 @@ public sealed class RemitoDbContext(DbContextOptions<RemitoDbContext> options) :
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Device> Devices => Set<Device>();
+    public DbSet<UserRoleAssignment> UserRoles => Set<UserRoleAssignment>();
+    public DbSet<OtpChallenge> OtpChallenges => Set<OtpChallenge>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<UserConsent> UserConsents => Set<UserConsent>();
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<Corridor> Corridors => Set<Corridor>();
     public DbSet<RateSource> RateSources => Set<RateSource>();

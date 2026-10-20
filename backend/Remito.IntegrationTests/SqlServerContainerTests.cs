@@ -8,7 +8,9 @@ namespace Remito.IntegrationTests;
 
 public sealed class SqlServerContainerTests : IAsyncLifetime
 {
-    private readonly MsSqlContainer sqlServer = new MsSqlBuilder().Build();
+    private readonly MsSqlContainer sqlServer = new MsSqlBuilder()
+        .WithEnvironment("MSSQL_MEMORY_LIMIT_MB", "2048")
+        .Build();
 
     public Task InitializeAsync() => sqlServer.StartAsync();
 

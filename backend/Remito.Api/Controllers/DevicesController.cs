@@ -11,9 +11,6 @@ public sealed class DevicesController : ApiStubControllerBase
     [HttpGet, ProducesResponseType(StatusCodes.Status501NotImplemented)]
     public IActionResult List(CancellationToken cancellationToken) => NotImplementedYet();
 
-    [HttpPost, ProducesResponseType(StatusCodes.Status501NotImplemented)]
-    public IActionResult Register(CancellationToken cancellationToken) => NotImplementedYet();
-
     [HttpDelete("{id:guid}"), ProducesResponseType(StatusCodes.Status501NotImplemented)]
     public IActionResult Remove(Guid id, CancellationToken cancellationToken) => NotImplementedYet();
 }
