@@ -13,22 +13,32 @@ import java.math.BigDecimal
 
 interface RemitoApi {
     @POST("auth/otp/request")
-    suspend fun requestOtp(@Body request: OtpRequest): Response<OtpRequestResponse>
+    suspend fun requestOtp(
+        @Body request: OtpRequest,
+    ): Response<OtpRequestResponse>
 
     @POST("auth/otp/verify")
-    suspend fun verifyOtp(@Body request: OtpVerificationRequest): Response<TokenResponse>
+    suspend fun verifyOtp(
+        @Body request: OtpVerificationRequest,
+    ): Response<TokenResponse>
 
     @POST("auth/refresh")
-    suspend fun refreshToken(@Body request: RefreshRequest): Response<TokenResponse>
+    suspend fun refreshToken(
+        @Body request: RefreshRequest,
+    ): Response<TokenResponse>
 
     @POST("auth/logout")
-    suspend fun logout(@Body request: RefreshRequest): Response<Unit>
+    suspend fun logout(
+        @Body request: RefreshRequest,
+    ): Response<Unit>
 
     @GET("me")
     suspend fun getMe(): Response<UserProfileDto>
 
     @PATCH("me")
-    suspend fun updateMe(@Body request: ProfileUpdateRequest): Response<UserProfileDto>
+    suspend fun updateMe(
+        @Body request: ProfileUpdateRequest,
+    ): Response<UserProfileDto>
 
     @DELETE("me")
     suspend fun deleteMe(): Response<Unit>
@@ -37,31 +47,45 @@ interface RemitoApi {
     suspend fun getConsents(): Response<List<ConsentStateDto>>
 
     @PUT("me/consents/terms")
-    suspend fun acceptTerms(@Body request: ConsentRequest): Response<ConsentStateDto>
+    suspend fun acceptTerms(
+        @Body request: ConsentRequest,
+    ): Response<ConsentStateDto>
 
     @PUT("me/consents/privacy")
-    suspend fun acceptPrivacy(@Body request: ConsentRequest): Response<ConsentStateDto>
+    suspend fun acceptPrivacy(
+        @Body request: ConsentRequest,
+    ): Response<ConsentStateDto>
 
     @PUT("me/consents/marketing")
-    suspend fun updateMarketingConsent(@Body request: ConsentRequest): Response<ConsentStateDto>
+    suspend fun updateMarketingConsent(
+        @Body request: ConsentRequest,
+    ): Response<ConsentStateDto>
 
     @GET("devices")
     suspend fun listDevices(): Response<List<DeviceDto>>
 
     @POST("devices")
-    suspend fun registerDevice(@Body request: DeviceRegistrationRequest): Response<DeviceDto>
+    suspend fun registerDevice(
+        @Body request: DeviceRegistrationRequest,
+    ): Response<DeviceDto>
 
     @DELETE("devices/{id}")
-    suspend fun removeDevice(@Path("id") id: String): Response<Unit>
+    suspend fun removeDevice(
+        @Path("id") id: String,
+    ): Response<Unit>
 
     @GET("currencies")
     suspend fun listCurrencies(): Response<List<CurrencyDto>>
 
     @GET("currencies/{code}")
-    suspend fun getCurrency(@Path("code") code: String): Response<CurrencyDto>
+    suspend fun getCurrency(
+        @Path("code") code: String,
+    ): Response<CurrencyDto>
 
     @GET("rates/latest")
-    suspend fun latestRate(@Query("pair") pair: String): Response<MarketRateDto>
+    suspend fun latestRate(
+        @Query("pair") pair: String,
+    ): Response<MarketRateDto>
 
     @GET("rates/history")
     suspend fun rateHistory(
@@ -87,7 +111,9 @@ interface RemitoApi {
     ): Response<PagedResponse<ExchangeDto>>
 
     @GET("exchanges/{slug}")
-    suspend fun exchange(@Path("slug") slug: String): Response<ExchangeDto>
+    suspend fun exchange(
+        @Path("slug") slug: String,
+    ): Response<ExchangeDto>
 
     @GET("compare")
     suspend fun compare(
@@ -111,10 +137,14 @@ interface RemitoApi {
     ): Response<PagedResponse<FavouriteDto>>
 
     @POST("favourites")
-    suspend fun addFavourite(@Body request: FavouriteRequest): Response<FavouriteDto>
+    suspend fun addFavourite(
+        @Body request: FavouriteRequest,
+    ): Response<FavouriteDto>
 
     @DELETE("favourites/{id}")
-    suspend fun removeFavourite(@Path("id") id: String): Response<Unit>
+    suspend fun removeFavourite(
+        @Path("id") id: String,
+    ): Response<Unit>
 
     @GET("alerts")
     suspend fun alerts(
@@ -123,7 +153,9 @@ interface RemitoApi {
     ): Response<PagedResponse<AlertDto>>
 
     @POST("alerts")
-    suspend fun createAlert(@Body request: AlertRequest): Response<AlertDto>
+    suspend fun createAlert(
+        @Body request: AlertRequest,
+    ): Response<AlertDto>
 
     @PATCH("alerts/{id}")
     suspend fun updateAlert(
@@ -132,7 +164,9 @@ interface RemitoApi {
     ): Response<AlertDto>
 
     @DELETE("alerts/{id}")
-    suspend fun deleteAlert(@Path("id") id: String): Response<Unit>
+    suspend fun deleteAlert(
+        @Path("id") id: String,
+    ): Response<Unit>
 
     @GET("news")
     suspend fun news(
@@ -141,10 +175,14 @@ interface RemitoApi {
     ): Response<PagedResponse<NewsItemDto>>
 
     @GET("news/{slug}")
-    suspend fun newsItem(@Path("slug") slug: String): Response<NewsItemDto>
+    suspend fun newsItem(
+        @Path("slug") slug: String,
+    ): Response<NewsItemDto>
 
     @GET("ads/slots/{slot}")
-    suspend fun adSlot(@Path("slot") slot: String): Response<List<AdCreativeDto>>
+    suspend fun adSlot(
+        @Path("slot") slot: String,
+    ): Response<List<AdCreativeDto>>
 
     @GET("admin/exchanges")
     suspend fun adminExchanges(
@@ -153,7 +191,9 @@ interface RemitoApi {
     ): Response<PagedResponse<ExchangeDto>>
 
     @POST("admin/exchanges")
-    suspend fun adminCreateExchange(@Body request: ExchangeWrite): Response<ExchangeDto>
+    suspend fun adminCreateExchange(
+        @Body request: ExchangeWrite,
+    ): Response<ExchangeDto>
 
     @PATCH("admin/exchanges/{id}")
     suspend fun adminUpdateExchange(
@@ -165,16 +205,22 @@ interface RemitoApi {
     suspend fun adminRateSources(): Response<List<RateSourceDto>>
 
     @POST("admin/rate-sources")
-    suspend fun adminCreateRateSource(@Body request: RateSourceWrite): Response<RateSourceDto>
+    suspend fun adminCreateRateSource(
+        @Body request: RateSourceWrite,
+    ): Response<RateSourceDto>
 
     @POST("admin/rates")
-    suspend fun adminIngestRate(@Body request: MarketRateWrite): Response<MarketRateDto>
+    suspend fun adminIngestRate(
+        @Body request: MarketRateWrite,
+    ): Response<MarketRateDto>
 
     @GET("admin/ad-campaigns")
     suspend fun adminAdCampaigns(): Response<List<AdCampaignDto>>
 
     @POST("admin/ad-campaigns")
-    suspend fun adminCreateAdCampaign(@Body request: AdCampaignWrite): Response<AdCampaignDto>
+    suspend fun adminCreateAdCampaign(
+        @Body request: AdCampaignWrite,
+    ): Response<AdCampaignDto>
 
     @GET("admin/news")
     suspend fun adminNews(
@@ -183,7 +229,9 @@ interface RemitoApi {
     ): Response<PagedResponse<NewsItemDto>>
 
     @POST("admin/news")
-    suspend fun adminCreateNews(@Body request: NewsWrite): Response<NewsItemDto>
+    suspend fun adminCreateNews(
+        @Body request: NewsWrite,
+    ): Response<NewsItemDto>
 
     @PATCH("admin/news/{id}")
     suspend fun adminUpdateNews(

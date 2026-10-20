@@ -23,7 +23,10 @@ enum class OtpChannel {
 }
 
 @JsonClass(generateAdapter = false)
-data class OtpRequest(val channel: OtpChannel, val destination: String)
+data class OtpRequest(
+    val channel: OtpChannel,
+    val destination: String,
+)
 
 @JsonClass(generateAdapter = false)
 data class OtpVerificationRequest(
@@ -33,10 +36,14 @@ data class OtpVerificationRequest(
 )
 
 @JsonClass(generateAdapter = false)
-data class OtpRequestResponse(val accepted: Boolean)
+data class OtpRequestResponse(
+    val accepted: Boolean,
+)
 
 @JsonClass(generateAdapter = false)
-data class RefreshRequest(val refreshToken: String)
+data class RefreshRequest(
+    val refreshToken: String,
+)
 
 @JsonClass(generateAdapter = false)
 data class TokenResponse(
@@ -55,7 +62,10 @@ enum class DevicePlatform {
 }
 
 @JsonClass(generateAdapter = false)
-data class DeviceRegistrationRequest(val fcmToken: String, val platform: DevicePlatform)
+data class DeviceRegistrationRequest(
+    val fcmToken: String,
+    val platform: DevicePlatform,
+)
 
 @JsonClass(generateAdapter = false)
 data class UserProfileDto(
@@ -68,7 +78,9 @@ data class UserProfileDto(
 )
 
 @JsonClass(generateAdapter = false)
-data class ProfileUpdateRequest(val displayName: String)
+data class ProfileUpdateRequest(
+    val displayName: String,
+)
 
 enum class ConsentType {
     @Json(name = "terms")
@@ -82,7 +94,10 @@ enum class ConsentType {
 }
 
 @JsonClass(generateAdapter = false)
-data class ConsentRequest(val isGranted: Boolean, val version: String)
+data class ConsentRequest(
+    val isGranted: Boolean,
+    val version: String,
+)
 
 @JsonClass(generateAdapter = false)
 data class ConsentStateDto(
@@ -93,7 +108,11 @@ data class ConsentStateDto(
 )
 
 @JsonClass(generateAdapter = false)
-data class DeviceDto(val id: String, val platform: DevicePlatform, val createdAt: String)
+data class DeviceDto(
+    val id: String,
+    val platform: DevicePlatform,
+    val createdAt: String,
+)
 
 @JsonClass(generateAdapter = false)
 data class CurrencyDto(
@@ -221,7 +240,10 @@ data class ExchangeOfferDto(
 )
 
 @JsonClass(generateAdapter = false)
-data class RedirectRequest(val corridorId: String, val amount: BigDecimal)
+data class RedirectRequest(
+    val corridorId: String,
+    val amount: BigDecimal,
+)
 
 enum class FavouriteType {
     @Json(name = "exchange")
@@ -232,7 +254,10 @@ enum class FavouriteType {
 }
 
 @JsonClass(generateAdapter = false)
-data class FavouriteRequest(val type: FavouriteType, val targetId: String)
+data class FavouriteRequest(
+    val type: FavouriteType,
+    val targetId: String,
+)
 
 @JsonClass(generateAdapter = false)
 data class FavouriteDto(
@@ -251,10 +276,17 @@ enum class AlertDirection {
 }
 
 @JsonClass(generateAdapter = false)
-data class AlertRequest(val pair: String, val direction: AlertDirection, val target: BigDecimal)
+data class AlertRequest(
+    val pair: String,
+    val direction: AlertDirection,
+    val target: BigDecimal,
+)
 
 @JsonClass(generateAdapter = false)
-data class AlertUpdate(val target: BigDecimal? = null, val isActive: Boolean? = null)
+data class AlertUpdate(
+    val target: BigDecimal? = null,
+    val isActive: Boolean? = null,
+)
 
 @JsonClass(generateAdapter = false)
 data class AlertDto(
