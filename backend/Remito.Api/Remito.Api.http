@@ -1,6 +1,161 @@
-@Remito.Api_HostAddress = http://localhost:5191
+@baseUrl = http://localhost:5191/api/v1
+@resourceId = 8f5f600e-f80c-422b-ac18-4967b99b9052
+@exchangeId = 6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f
+@corridorId = 0f43b2c9-44b3-4b91-8e7f-2aa9e19ecb01
+@rateSourceId = 8f5f600e-f80c-422b-ac18-4967b99b9052
 
-GET {{Remito.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Exchange identity token
+POST {{baseUrl}}/auth/token
+Content-Type: application/json
 
-###
+{ "idToken": "example-identity-provider-token" }
+
+### Refresh token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "example-refresh-token" }
+
+### Revoke token
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+
+{ "refreshToken": "example-refresh-token" }
+
+### List devices
+GET {{baseUrl}}/devices
+
+### Register device
+POST {{baseUrl}}/devices
+Content-Type: application/json
+
+{ "fcmToken": "example-fcm-token", "platform": "android" }
+
+### Remove device
+DELETE {{baseUrl}}/devices/{{resourceId}}
+
+### List currencies
+GET {{baseUrl}}/currencies
+
+### Get currency
+GET {{baseUrl}}/currencies/INR
+
+### Latest market rate
+GET {{baseUrl}}/rates/latest?pair=OMR%2FINR
+
+### Rate history
+GET {{baseUrl}}/rates/history?pair=OMR%2FINR&bucket=1D&page=1&pageSize=50
+
+### Convert amount
+GET {{baseUrl}}/convert?from=OMR&to=INR&amount=10
+
+### List exchanges
+GET {{baseUrl}}/exchanges?page=1&pageSize=20
+
+### Get exchange
+GET {{baseUrl}}/exchanges/example-exchange
+
+### Compare exchange offers
+GET {{baseUrl}}/compare?from=OMR&to=INR&amount=10&page=1&pageSize=20
+
+### Record referral and redirect
+POST {{baseUrl}}/redirect/{{exchangeId}}
+Content-Type: application/json
+
+{ "corridorId": "{{corridorId}}", "amount": 10 }
+
+### List favourites
+GET {{baseUrl}}/favourites?page=1&pageSize=20
+
+### Create favourite
+POST {{baseUrl}}/favourites
+Content-Type: application/json
+
+{ "type": "exchange", "targetId": "{{exchangeId}}" }
+
+### Delete favourite
+DELETE {{baseUrl}}/favourites/{{resourceId}}
+
+### List alerts
+GET {{baseUrl}}/alerts?page=1&pageSize=20
+
+### Create alert
+POST {{baseUrl}}/alerts
+Content-Type: application/json
+
+{ "pair": "OMR/INR", "direction": "above", "target": 220 }
+
+### Update alert
+PATCH {{baseUrl}}/alerts/{{resourceId}}
+Content-Type: application/json
+
+{ "target": 225, "isActive": true }
+
+### Delete alert
+DELETE {{baseUrl}}/alerts/{{resourceId}}
+
+### List published news
+GET {{baseUrl}}/news?page=1&pageSize=20
+
+### Get news item
+GET {{baseUrl}}/news/currency-market-update
+
+### Load ad slot
+GET {{baseUrl}}/ads/slots/compare-banner
+
+### Admin list exchanges
+GET {{baseUrl}}/admin/exchanges?page=1&pageSize=20
+
+### Admin create exchange
+POST {{baseUrl}}/admin/exchanges
+Content-Type: application/json
+
+{ "name": "Example Exchange", "slug": "example-exchange", "hasApp": true, "appDeepLink": "example://open", "playStoreUrl": "https://play.google.com/store/apps/details?id=example", "gatewayUrl": "https://exchange.example", "status": "active", "tier": "standard" }
+
+### Admin update exchange
+PATCH {{baseUrl}}/admin/exchanges/{{exchangeId}}
+Content-Type: application/json
+
+{ "name": "Example Exchange", "slug": "example-exchange", "hasApp": false, "status": "suspended", "tier": "standard" }
+
+### Admin list rate sources
+GET {{baseUrl}}/admin/rate-sources
+
+### Admin create rate source
+POST {{baseUrl}}/admin/rate-sources
+Content-Type: application/json
+
+{ "name": "Primary provider", "type": "provider", "priority": 1, "isActive": true }
+
+### Admin ingest market rate
+POST {{baseUrl}}/admin/rates
+Content-Type: application/json
+
+{ "pair": "OMR/INR", "bid": 216.25, "ask": 217.15, "mid": 216.7, "sourceId": "{{rateSourceId}}", "fetchedAt": "2026-10-20T09:00:00Z", "isStale": false }
+
+### Admin list campaigns
+GET {{baseUrl}}/admin/ad-campaigns
+
+### Admin create campaign
+POST {{baseUrl}}/admin/ad-campaigns
+Content-Type: application/json
+
+{ "name": "Autumn campaign", "startsAt": "2026-10-01T00:00:00Z", "endsAt": "2026-11-01T00:00:00Z", "isActive": true }
+
+### Admin list news including drafts
+GET {{baseUrl}}/admin/news?page=1&pageSize=20
+
+### Admin create news
+POST {{baseUrl}}/admin/news
+Content-Type: application/json
+
+{ "title": "Market update", "slug": "market-update", "summary": "A sample market update.", "body": "Example news content.", "sourceUrl": null, "isPublished": false }
+
+### Admin update and publish news
+PATCH {{baseUrl}}/admin/news/{{resourceId}}
+Content-Type: application/json
+
+{ "title": "Market update", "slug": "market-update", "summary": "Updated summary.", "body": "Updated news content.", "sourceUrl": null, "isPublished": true }
+
+### Admin query audit logs
+GET {{baseUrl}}/admin/audit-logs?page=1&pageSize=50

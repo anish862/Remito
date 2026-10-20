@@ -14,4 +14,6 @@ object NetworkClient {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
     }
+
+    fun createApi(baseUrl: String): RemitoApi = create(baseUrl).create(RemitoApi::class.java)
 }

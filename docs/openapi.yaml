@@ -1,0 +1,1151 @@
+openapi: 3.1.0
+info:
+  title: Remito API
+  version: 1.0.0
+  summary: Currency-rate comparison and exchange referral API
+  description: >-
+    Remito compares exchange offers and redirects customers to licensed exchanges.
+    Remito does not process payments.
+servers:
+  - url: https://api.remito.example/api/v1
+    description: Production base URL placeholder
+tags:
+  - name: Auth
+  - name: Devices
+  - name: Currencies
+  - name: Rates
+  - name: Convert
+  - name: Exchanges
+  - name: Compare
+  - name: Redirect
+  - name: Favourites
+  - name: Alerts
+  - name: News
+  - name: Ads
+  - name: Admin
+security:
+  - bearerAuth: []
+paths:
+  /auth/token:
+    post:
+      tags: [Auth]
+      operationId: createToken
+      summary: Exchange an identity-provider token for a Remito access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+            example: { idToken: "eyJhbGciOi..." }
+      responses:
+        '200':
+          description: Access and refresh tokens
+          headers: { X-RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }, X-RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }, X-RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+              example: { accessToken: "eyJ...", refreshToken: "opaque-token", tokenType: Bearer, expiresIn: 3600 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      summary: Refresh an access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+            example: { refreshToken: "opaque-token" }
+      responses:
+        '200':
+          description: Refreshed token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+              example: { accessToken: "eyJ...", refreshToken: "opaque-token-2", tokenType: Bearer, expiresIn: 3600 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+            example: { refreshToken: "opaque-token" }
+      responses:
+        '204': { description: Token revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /devices:
+    get:
+      tags: [Devices]
+      operationId: listDevices
+      summary: List the current user's registered devices
+      responses:
+        '200':
+          description: Registered devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Device' }
+              example: [{ id: "2df427e3-8bb8-49d2-a793-419e5946e544", platform: android, createdAt: "2026-10-20T09:00:00Z" }]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Devices]
+      operationId: registerDevice
+      summary: Register or update a push-notification device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceRegistration' }
+            example: { fcmToken: "fcm-token-value", platform: android }
+      responses:
+        '201':
+          description: Device registered
+          headers: { Location: { schema: { type: string }, example: /api/v1/devices/2df427e3-8bb8-49d2-a793-419e5946e544 } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+              example: { id: "2df427e3-8bb8-49d2-a793-419e5946e544", platform: android, createdAt: "2026-10-20T09:00:00Z" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /devices/{id}:
+    delete:
+      tags: [Devices]
+      operationId: removeDevice
+      summary: Remove a registered device
+      parameters:
+        - { $ref: '#/components/parameters/DeviceId' }
+      responses:
+        '204': { description: Device removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /currencies:
+    get:
+      tags: [Currencies]
+      operationId: listCurrencies
+      summary: List supported currencies
+      security: []
+      responses:
+        '200':
+          description: Supported currencies
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Currency' } }
+              example: [{ code: OMR, name: Omani Rial, symbol: OMR, decimalPlaces: 3 }, { code: INR, name: Indian Rupee, symbol: INR, decimalPlaces: 2 }]
+        'default': { $ref: '#/components/responses/Problem' }
+  /currencies/{code}:
+    get:
+      tags: [Currencies]
+      operationId: getCurrency
+      summary: Get a supported currency
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Z]{3}$' }
+          example: INR
+      responses:
+        '200':
+          description: Currency
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Currency' }
+              example: { code: INR, name: Indian Rupee, symbol: INR, decimalPlaces: 2 }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /rates/latest:
+    get:
+      tags: [Rates]
+      operationId: getLatestRate
+      summary: Get the latest market rate for a currency pair
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Pair' }
+      responses:
+        '200':
+          description: Latest market rate
+          headers: { X-RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }, X-RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }, X-RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketRate' }
+              example: { pair: OMR/INR, bid: 216.25, ask: 217.15, mid: 216.7, source: "Market feed", fetchedAt: "2026-10-20T09:00:00Z", isStale: false }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /rates/history:
+    get:
+      tags: [Rates]
+      operationId: getRateHistory
+      summary: Get time-bucketed historical rates
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Pair' }
+        - name: bucket
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/HistoryBucket' }
+          example: 1D
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Historical rate samples
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedRateHistory' }
+              example: { items: [{ pair: OMR/INR, bucket: 1D, timestamp: "2026-10-20T00:00:00Z", value: 216.7 }], page: 1, pageSize: 50, totalItems: 1, totalPages: 1 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /convert:
+    get:
+      tags: [Convert]
+      operationId: convertAmount
+      summary: Convert an amount using the latest market mid-rate
+      security: []
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, pattern: '^[A-Z]{3}$' }, example: OMR }
+        - { name: to, in: query, required: true, schema: { type: string, pattern: '^[A-Z]{3}$' }, example: INR }
+        - { name: amount, in: query, required: true, schema: { type: number, format: double, exclusiveMinimum: 0 }, example: 10 }
+      responses:
+        '200':
+          description: Converted amount and rate timestamp
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversionQuote' }
+              example: { fromCurrency: OMR, toCurrency: INR, amount: 10, rate: 216.7, convertedAmount: 2167, fetchedAt: "2026-10-20T09:00:00Z", isStale: false }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /exchanges:
+    get:
+      tags: [Exchanges]
+      operationId: listExchanges
+      summary: List active exchanges
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Active exchanges
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedExchanges' }
+              example: { items: [{ id: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", name: "Example Exchange", slug: example-exchange, logoUrl: null, hasApp: false, appDeepLink: null, playStoreUrl: null, gatewayUrl: "https://exchange.example", status: active, tier: standard }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+        'default': { $ref: '#/components/responses/Problem' }
+  /exchanges/{slug}:
+    get:
+      tags: [Exchanges]
+      operationId: getExchange
+      summary: Get exchange information
+      security: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+          example: example-exchange
+      responses:
+        '200':
+          description: Exchange
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exchange' }
+              example: { id: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", name: "Example Exchange", slug: example-exchange, logoUrl: null, hasApp: false, appDeepLink: null, playStoreUrl: null, gatewayUrl: "https://exchange.example", status: active, tier: standard }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /compare:
+    get:
+      tags: [Compare]
+      operationId: compareExchanges
+      summary: Compare exchange offers for a corridor and amount
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/FromCurrency' }
+        - { $ref: '#/components/parameters/ToCurrency' }
+        - { name: amount, in: query, required: true, schema: { type: number, format: double, exclusiveMinimum: 0 }, example: 10 }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Offers ordered by net amount received
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedOffers' }
+              example: { items: [{ exchange: { id: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", name: "Example Exchange", slug: example-exchange, logoUrl: null, hasApp: false, appDeepLink: null, playStoreUrl: null, gatewayUrl: "https://exchange.example", status: active, tier: standard }, rate: 216.5, fee: null, amountReceived: 2165, fetchedAt: "2026-10-20T09:00:00Z", isStale: false }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /redirect/{exchangeId}:
+    post:
+      tags: [Redirect]
+      operationId: createRedirect
+      summary: Record a referral click and redirect to the exchange
+      parameters:
+        - name: exchangeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RedirectRequest' }
+            example: { corridorId: "0f43b2c9-44b3-4b91-8e7f-2aa9e19ecb01", amount: 10 }
+      responses:
+        '302':
+          description: Redirect to the exchange gateway
+          headers:
+            Location: { schema: { type: string, format: uri }, example: "https://exchange.example/transfer" }
+            X-Click-Id: { schema: { type: string }, example: "click_01JABCD" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /favourites:
+    get:
+      tags: [Favourites]
+      operationId: listFavourites
+      summary: List the current user's favourites
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Favourites
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedFavourites' }
+              example: { items: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", type: exchange, targetId: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", createdAt: "2026-10-20T09:00:00Z" }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Favourites]
+      operationId: createFavourite
+      summary: Add a favourite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FavouriteRequest' }
+            example: { type: exchange, targetId: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f" }
+      responses:
+        '201':
+          description: Favourite added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Favourite' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", type: exchange, targetId: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", createdAt: "2026-10-20T09:00:00Z" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /favourites/{id}:
+    delete:
+      tags: [Favourites]
+      operationId: deleteFavourite
+      summary: Remove a favourite
+      parameters:
+        - { $ref: '#/components/parameters/ResourceId' }
+      responses:
+        '204': { description: Favourite removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /alerts:
+    get:
+      tags: [Alerts]
+      operationId: listAlerts
+      summary: List the current user's rate alerts
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Alerts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedAlerts' }
+              example: { items: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", pair: OMR/INR, direction: above, target: 220, isActive: true, lastTriggeredAt: null }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Alerts]
+      operationId: createAlert
+      summary: Create a rate alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertRequest' }
+            example: { pair: OMR/INR, direction: above, target: 220 }
+      responses:
+        '201':
+          description: Alert created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", pair: OMR/INR, direction: above, target: 220, isActive: true, lastTriggeredAt: null }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /alerts/{id}:
+    patch:
+      tags: [Alerts]
+      operationId: updateAlert
+      summary: Update alert threshold or active state
+      parameters:
+        - { $ref: '#/components/parameters/ResourceId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertUpdate' }
+            example: { target: 225, isActive: true }
+      responses:
+        '200':
+          description: Updated alert
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", pair: OMR/INR, direction: above, target: 225, isActive: true, lastTriggeredAt: null }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Alerts]
+      operationId: deleteAlert
+      summary: Delete a rate alert
+      parameters:
+        - { $ref: '#/components/parameters/ResourceId' }
+      responses:
+        '204': { description: Alert deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /news:
+    get:
+      tags: [News]
+      operationId: listNews
+      summary: List published news
+      security: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Published news
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedNews' }
+              example: { items: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", title: "Currency market update", slug: currency-market-update, summary: "A sample update.", body: "Example news content.", sourceUrl: null, publishedAt: "2026-10-20T09:00:00Z" }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+        'default': { $ref: '#/components/responses/Problem' }
+  /news/{slug}:
+    get:
+      tags: [News]
+      operationId: getNews
+      summary: Get a published news item
+      security: []
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string }, example: currency-market-update }
+      responses:
+        '200':
+          description: News item
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsItem' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", title: "Currency market update", slug: currency-market-update, summary: "A sample update.", body: "Example news content.", sourceUrl: null, publishedAt: "2026-10-20T09:00:00Z" }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /ads/slots/{slot}:
+    get:
+      tags: [Ads]
+      operationId: getAdSlot
+      summary: Get active creatives for an ad slot
+      security: []
+      parameters:
+        - name: slot
+          in: path
+          required: true
+          schema: { type: string }
+          example: compare-banner
+      responses:
+        '200':
+          description: Active, clearly identified sponsored creatives
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdCreative' } }
+              example: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", slot: compare-banner, imageUrl: "https://cdn.example/ad.png", targetUrl: "https://example.com", altText: "Sponsored offer", sponsored: true }]
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/exchanges:
+    get:
+      tags: [Admin]
+      operationId: adminListExchanges
+      summary: List exchanges including pending and placeholder entries
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Exchange administration page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedExchanges' }
+              example: { items: [{ id: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", name: "Placeholder Exchange 01", slug: placeholder-exchange-01, logoUrl: null, hasApp: false, appDeepLink: null, playStoreUrl: null, gatewayUrl: null, status: pending, tier: standard }], page: 1, pageSize: 20, totalItems: 10, totalPages: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Admin]
+      operationId: adminCreateExchange
+      summary: Create an exchange
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExchangeWrite' }
+            example: { name: "Example Exchange", slug: example-exchange, hasApp: true, appDeepLink: "example://open", playStoreUrl: "https://play.google.com/store/apps/details?id=example", gatewayUrl: "https://exchange.example", status: active, tier: standard }
+      responses:
+        '201':
+          description: Exchange created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exchange' }
+              example: { id: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", name: "Example Exchange", slug: example-exchange, logoUrl: null, hasApp: true, appDeepLink: "example://open", playStoreUrl: "https://play.google.com/store/apps/details?id=example", gatewayUrl: "https://exchange.example", status: active, tier: standard }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/exchanges/{id}:
+    patch:
+      tags: [Admin]
+      operationId: adminUpdateExchange
+      summary: Update exchange details and status
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ResourceId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExchangeWrite' }
+            example: { name: "Example Exchange", slug: example-exchange, hasApp: false, status: suspended, tier: standard }
+      responses:
+        '200':
+          description: Updated exchange
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Exchange' }
+              example: { id: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", name: "Example Exchange", slug: example-exchange, logoUrl: null, hasApp: false, appDeepLink: null, playStoreUrl: null, gatewayUrl: null, status: suspended, tier: standard }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/rate-sources:
+    get:
+      tags: [Admin]
+      operationId: adminListRateSources
+      summary: List configured market-rate sources
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: Rate sources
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/RateSource' } }
+              example: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", name: "Primary provider", type: provider, priority: 1, isActive: true }]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Admin]
+      operationId: adminCreateRateSource
+      summary: Configure a market-rate source
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RateSourceWrite' }
+            example: { name: "Primary provider", type: provider, priority: 1, isActive: true }
+      responses:
+        '201':
+          description: Rate source created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateSource' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", name: "Primary provider", type: provider, priority: 1, isActive: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/rates:
+    post:
+      tags: [Admin]
+      operationId: adminIngestMarketRate
+      summary: Ingest a market rate for a configured source
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MarketRateWrite' }
+            example: { pair: OMR/INR, bid: 216.25, ask: 217.15, mid: 216.7, sourceId: "8f5f600e-f80c-422b-ac18-4967b99b9052", fetchedAt: "2026-10-20T09:00:00Z", isStale: false }
+      responses:
+        '201':
+          description: Rate ingested
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarketRate' }
+              example: { pair: OMR/INR, bid: 216.25, ask: 217.15, mid: 216.7, source: "Primary provider", fetchedAt: "2026-10-20T09:00:00Z", isStale: false }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/ad-campaigns:
+    get:
+      tags: [Admin]
+      operationId: adminListAdCampaigns
+      summary: List ad campaigns
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: Campaigns
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdCampaign' } }
+              example: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", name: "Autumn campaign", startsAt: "2026-10-01T00:00:00Z", endsAt: "2026-11-01T00:00:00Z", isActive: true }]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Admin]
+      operationId: adminCreateAdCampaign
+      summary: Create an ad campaign and creatives
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdCampaignWrite' }
+            example: { name: "Autumn campaign", startsAt: "2026-10-01T00:00:00Z", endsAt: "2026-11-01T00:00:00Z", isActive: true }
+      responses:
+        '201':
+          description: Campaign created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdCampaign' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", name: "Autumn campaign", startsAt: "2026-10-01T00:00:00Z", endsAt: "2026-11-01T00:00:00Z", isActive: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/news:
+    get:
+      tags: [Admin]
+      operationId: adminListNews
+      summary: List all news items including drafts
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: News administration page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedNews' }
+              example: { items: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", title: "Market update", slug: market-update, summary: "Summary", body: "Draft text", sourceUrl: null, publishedAt: null }], page: 1, pageSize: 20, totalItems: 1, totalPages: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Admin]
+      operationId: adminCreateNews
+      summary: Create a news item
+      security: [{ bearerAuth: [], adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewsWrite' }
+            example: { title: "Market update", slug: market-update, summary: "Summary", body: "News content", sourceUrl: null, isPublished: false }
+      responses:
+        '201':
+          description: News item created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsItem' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", title: "Market update", slug: market-update, summary: "Summary", body: "News content", sourceUrl: null, publishedAt: null }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/news/{id}:
+    patch:
+      tags: [Admin]
+      operationId: adminUpdateNews
+      summary: Update or publish a news item
+      security: [{ bearerAuth: [], adminAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/ResourceId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewsWrite' }
+            example: { title: "Market update", slug: market-update, summary: "Updated summary", body: "Updated news content", sourceUrl: null, isPublished: true }
+      responses:
+        '200':
+          description: Updated news item
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsItem' }
+              example: { id: "8f5f600e-f80c-422b-ac18-4967b99b9052", title: "Market update", slug: market-update, summary: "Updated summary", body: "Updated news content", sourceUrl: null, publishedAt: "2026-10-20T09:00:00Z" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        'default': { $ref: '#/components/responses/Problem' }
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      operationId: adminListAuditLogs
+      summary: Search audit logs
+      security: [{ bearerAuth: [], adminAuth: [] }]
+      parameters:
+        - { name: entityType, in: query, schema: { type: string } }
+        - { name: entityId, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          description: Audit log page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedAuditLogs' }
+              example: { items: [{ id: "8f5f600e-f80c-422b-ac18-4967b99b9052", userId: null, action: create, entityType: Exchange, entityId: "6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f", createdAt: "2026-10-20T09:00:00Z", details: null }], page: 1, pageSize: 50, totalItems: 1, totalPages: 1 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        'default': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    adminAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Requires an administrative role claim.
+  headers:
+    RateLimitLimit:
+      description: Maximum requests allowed in the current window.
+      schema: { type: integer }
+      example: 120
+    RateLimitRemaining:
+      description: Requests remaining in the current window.
+      schema: { type: integer }
+      example: 119
+    RateLimitReset:
+      description: Unix timestamp when the current rate-limit window resets.
+      schema: { type: integer }
+      example: 1792490400
+    RetryAfter:
+      description: Seconds until retry is allowed.
+      schema: { type: integer }
+      example: 60
+  parameters:
+    DeviceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Pair:
+      name: pair
+      in: query
+      required: true
+      schema: { type: string, pattern: '^[A-Z]{3}/[A-Z]{3}$' }
+      example: OMR/INR
+    FromCurrency:
+      name: from
+      in: query
+      required: true
+      schema: { type: string, pattern: '^[A-Z]{3}$' }
+      example: OMR
+    ToCurrency:
+      name: to
+      in: query
+      required: true
+      schema: { type: string, pattern: '^[A-Z]{3}$' }
+      example: INR
+    Page:
+      name: page
+      in: query
+      description: One-based page number.
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      description: Page size, capped at 100.
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  responses:
+    BadRequest:
+      description: Request validation failed.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "https://www.rfc-editor.org/rfc/rfc7807", title: "Invalid request", status: 400, detail: "The amount must be greater than zero.", instance: "/api/v1/convert" }
+    Unauthorized:
+      description: Authentication is required or invalid.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "about:blank", title: "Unauthorized", status: 401, detail: "A valid bearer token is required.", instance: "/api/v1/favourites" }
+    Forbidden:
+      description: The authenticated user is not authorized.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "about:blank", title: "Forbidden", status: 403, detail: "Administrator role required.", instance: "/api/v1/admin/exchanges" }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "about:blank", title: "Not found", status: 404, detail: "The requested resource was not found.", instance: "/api/v1/currencies/XYZ" }
+    Conflict:
+      description: Resource conflicts with an existing record.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "about:blank", title: "Conflict", status: 409, detail: "The resource already exists.", instance: "/api/v1/favourites" }
+    RateLimited:
+      description: Rate limit exceeded.
+      headers:
+        X-RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        X-RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        X-RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "about:blank", title: "Too many requests", status: 429, detail: "Retry after the current rate-limit window.", instance: "/api/v1/rates/latest" }
+    Problem:
+      description: RFC 7807 error response; controller stubs currently return 501 Not Implemented.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: "about:blank", title: "Not implemented", status: 501, detail: "This API endpoint is defined by the contract but is not implemented yet.", instance: "/api/v1/rates/latest" }
+  schemas:
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details error response.
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        traceId: { type: string }
+      additionalProperties: true
+      example: { type: "about:blank", title: "Invalid request", status: 400, detail: "The request is invalid.", instance: "/api/v1/convert" }
+    TokenRequest:
+      type: object
+      required: [idToken]
+      properties:
+        idToken: { type: string, minLength: 1, example: "eyJhbGciOi..." }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, minLength: 1, example: "opaque-token" }
+    TokenResponse:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, const: Bearer }
+        expiresIn: { type: integer, minimum: 1 }
+    DeviceRegistration:
+      type: object
+      required: [fcmToken, platform]
+      properties:
+        fcmToken: { type: string, minLength: 1, maxLength: 4096 }
+        platform: { type: string, enum: [android, ios] }
+    Device:
+      type: object
+      required: [id, platform, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        platform: { type: string, enum: [android, ios] }
+        createdAt: { type: string, format: date-time }
+    Currency:
+      type: object
+      required: [code, name, symbol, decimalPlaces]
+      properties:
+        code: { type: string, pattern: '^[A-Z]{3}$' }
+        name: { type: string }
+        symbol: { type: string }
+        decimalPlaces: { type: integer, minimum: 0, maximum: 4 }
+    MarketRate:
+      type: object
+      required: [pair, bid, ask, mid, source, fetchedAt, isStale]
+      properties:
+        pair: { type: string, pattern: '^[A-Z]{3}/[A-Z]{3}$' }
+        bid: { type: number, format: double }
+        ask: { type: number, format: double }
+        mid: { type: number, format: double }
+        source: { type: string }
+        fetchedAt: { type: string, format: date-time }
+        isStale: { type: boolean }
+    HistoryBucket:
+      type: string
+      enum: ['1D', '1W', '1M', '6M', '1Y']
+    RateHistory:
+      type: object
+      required: [pair, bucket, timestamp, value]
+      properties:
+        pair: { type: string }
+        bucket: { $ref: '#/components/schemas/HistoryBucket' }
+        timestamp: { type: string, format: date-time }
+        value: { type: number, format: double }
+    ConversionQuote:
+      type: object
+      required: [fromCurrency, toCurrency, amount, rate, convertedAmount, fetchedAt, isStale]
+      properties:
+        fromCurrency: { type: string }
+        toCurrency: { type: string }
+        amount: { type: number, format: double }
+        rate: { type: number, format: double }
+        convertedAmount: { type: number, format: double }
+        fetchedAt: { type: string, format: date-time }
+        isStale: { type: boolean }
+    Exchange:
+      type: object
+      required: [id, name, slug, hasApp, status, tier]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        logoUrl: { type: [string, 'null'], format: uri }
+        hasApp: { type: boolean }
+        appDeepLink: { type: [string, 'null'] }
+        playStoreUrl: { type: [string, 'null'], format: uri }
+        gatewayUrl: { type: [string, 'null'], format: uri }
+        status: { type: string, enum: [pending, active, suspended, inactive] }
+        tier: { type: string, enum: [standard, featured, sponsored] }
+    ExchangeWrite:
+      type: object
+      required: [name, slug, hasApp, status, tier]
+      properties:
+        name: { type: string, maxLength: 200 }
+        slug: { type: string, maxLength: 200 }
+        logoUrl: { type: [string, 'null'], format: uri }
+        hasApp: { type: boolean }
+        appDeepLink: { type: [string, 'null'] }
+        playStoreUrl: { type: [string, 'null'], format: uri }
+        gatewayUrl: { type: [string, 'null'], format: uri }
+        status: { type: string, enum: [pending, active, suspended, inactive] }
+        tier: { type: string, enum: [standard, featured, sponsored] }
+    ExchangeFee:
+      type: object
+      properties:
+        minAmount: { type: [number, 'null'], format: double }
+        maxAmount: { type: [number, 'null'], format: double }
+        flatFee: { type: [number, 'null'], format: double }
+        percentFee: { type: [number, 'null'], format: double }
+    ExchangeOffer:
+      type: object
+      required: [exchange, rate, amountReceived, fetchedAt, isStale]
+      properties:
+        exchange: { $ref: '#/components/schemas/Exchange' }
+        rate: { type: number, format: double }
+        fee: { oneOf: [{ $ref: '#/components/schemas/ExchangeFee' }, { type: 'null' }] }
+        amountReceived: { type: number, format: double }
+        fetchedAt: { type: string, format: date-time }
+        isStale: { type: boolean }
+    RedirectRequest:
+      type: object
+      required: [corridorId, amount]
+      properties:
+        corridorId: { type: string, format: uuid }
+        amount: { type: number, format: double, exclusiveMinimum: 0 }
+    FavouriteRequest:
+      type: object
+      required: [type, targetId]
+      properties:
+        type: { type: string, enum: [exchange, corridor] }
+        targetId: { type: string, format: uuid }
+    Favourite:
+      allOf:
+        - { $ref: '#/components/schemas/FavouriteRequest' }
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id: { type: string, format: uuid }
+            createdAt: { type: string, format: date-time }
+    AlertRequest:
+      type: object
+      required: [pair, direction, target]
+      properties:
+        pair: { type: string, pattern: '^[A-Z]{3}/[A-Z]{3}$' }
+        direction: { type: string, enum: [above, below] }
+        target: { type: number, format: double, exclusiveMinimum: 0 }
+    AlertUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        target: { type: number, format: double, exclusiveMinimum: 0 }
+        isActive: { type: boolean }
+    Alert:
+      allOf:
+        - { $ref: '#/components/schemas/AlertRequest' }
+        - type: object
+          required: [id, isActive]
+          properties:
+            id: { type: string, format: uuid }
+            isActive: { type: boolean }
+            lastTriggeredAt: { type: [string, 'null'], format: date-time }
+    NewsItem:
+      type: object
+      required: [id, title, slug, summary, body]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        slug: { type: string }
+        summary: { type: string }
+        body: { type: string }
+        sourceUrl: { type: [string, 'null'], format: uri }
+        publishedAt: { type: [string, 'null'], format: date-time }
+    NewsWrite:
+      type: object
+      required: [title, slug, summary, body, isPublished]
+      properties:
+        title: { type: string, maxLength: 300 }
+        slug: { type: string, maxLength: 300 }
+        summary: { type: string, maxLength: 1000 }
+        body: { type: string }
+        sourceUrl: { type: [string, 'null'], format: uri }
+        isPublished: { type: boolean }
+    AdCreative:
+      type: object
+      required: [id, slot, imageUrl, targetUrl, altText, sponsored]
+      properties:
+        id: { type: string, format: uuid }
+        slot: { type: string }
+        imageUrl: { type: string, format: uri }
+        targetUrl: { type: string, format: uri }
+        altText: { type: string }
+        sponsored: { type: boolean, const: true }
+    AdCampaignWrite:
+      type: object
+      required: [name, startsAt, endsAt, isActive]
+      properties:
+        name: { type: string, maxLength: 200 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        isActive: { type: boolean }
+    AdCampaign:
+      allOf:
+        - { $ref: '#/components/schemas/AdCampaignWrite' }
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+    RateSourceWrite:
+      type: object
+      required: [name, type, priority, isActive]
+      properties:
+        name: { type: string, maxLength: 200 }
+        type: { type: string, enum: [provider, exchange, manual] }
+        priority: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
+    RateSource:
+      allOf:
+        - { $ref: '#/components/schemas/RateSourceWrite' }
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+    MarketRateWrite:
+      type: object
+      required: [pair, bid, ask, mid, sourceId, fetchedAt, isStale]
+      properties:
+        pair: { type: string, pattern: '^[A-Z]{3}/[A-Z]{3}$' }
+        bid: { type: number, format: double, minimum: 0 }
+        ask: { type: number, format: double, minimum: 0 }
+        mid: { type: number, format: double, minimum: 0 }
+        sourceId: { type: string, format: uuid }
+        fetchedAt: { type: string, format: date-time }
+        isStale: { type: boolean }
+    AuditLog:
+      type: object
+      required: [id, action, entityType, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: [string, 'null'], format: uuid }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        details: { type: [string, 'null'] }
+    Page:
+      type: object
+      required: [page, pageSize, totalItems, totalPages]
+      properties:
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 100 }
+        totalItems: { type: integer, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+    PagedRateHistory:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/RateHistory' } } } }]
+    PagedExchanges:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/Exchange' } } } }]
+    PagedOffers:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/ExchangeOffer' } } } }]
+    PagedFavourites:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/Favourite' } } } }]
+    PagedAlerts:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/Alert' } } } }]
+    PagedNews:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/NewsItem' } } } }]
+    PagedAuditLogs:
+      allOf: [{ $ref: '#/components/schemas/Page' }, { type: object, required: [items], properties: { items: { type: array, items: { $ref: '#/components/schemas/AuditLog' } } } }]
