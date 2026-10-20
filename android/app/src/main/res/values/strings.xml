@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Remito</string>
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_dashboard_description">Dashboard tab</string>
+    <string name="tab_compare">Compare</string>
+    <string name="tab_compare_description">Compare exchange rates tab</string>
+    <string name="tab_convert">Convert</string>
+    <string name="tab_convert_description">Currency converter tab</string>
+    <string name="tab_alerts">Alerts</string>
+    <string name="tab_alerts_description">Rate alerts tab</string>
+    <string name="tab_profile">Profile</string>
+    <string name="tab_profile_description">Profile tab</string>
+</resources>
