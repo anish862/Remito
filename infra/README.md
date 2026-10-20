@@ -1,3 +1,3 @@
 # Infrastructure
 
-Reserved for Step 2. Azure Bicep modules and environment parameters will be added in that step. No production resources are provisioned by this scaffold.
+Subscription-scope Bicep modules provision isolated dev, staging, and prod resources. See [docs/infra.md](../docs/infra.md) for the complete resource inventory and owners, provisioning instructions, GitHub Actions setup, branch protection, secrets handling, and rollback runbook.

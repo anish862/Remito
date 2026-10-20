@@ -1,0 +1,80 @@
+name: Infrastructure validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infra.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  bicep-build:
+    name: infrastructure-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build all Bicep modules
+        run: |
+          az bicep version
+          find infra -type f -name '*.bicep' -print0 |
+            while IFS= read -r -d '' file; do
+              output="$RUNNER_TEMP/$(basename "${file%.bicep}").json"
+              az bicep build --file "$file" --outfile "$output"
+            done
+      - name: Run dev what-if
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          AZURE_SQL_AAD_ADMIN_OBJECT_ID: ${{ vars.AZURE_SQL_AAD_ADMIN_OBJECT_ID }}
+          AZURE_SQL_AAD_ADMIN_LOGIN: ${{ vars.AZURE_SQL_AAD_ADMIN_LOGIN }}
+          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
+          AZURE_LOCATION: eastus
+        run: |
+          test -n "$AZURE_SQL_AAD_ADMIN_OBJECT_ID"
+          test -n "$AZURE_SQL_AAD_ADMIN_LOGIN"
+          az deployment sub what-if \
+            --name "remito-dev-pr-${{ github.event.pull_request.number }}" \
+            --location "$AZURE_LOCATION" \
+            --template-file infra/main.bicep \
+            --parameters infra/environments/dev.bicepparam \
+              sqlAadAdminObjectId="$AZURE_SQL_AAD_ADMIN_OBJECT_ID" \
+              sqlAadAdminLogin="$AZURE_SQL_AAD_ADMIN_LOGIN" \
+              alertEmail="$ALERT_EMAIL" \
+            --output json > "$RUNNER_TEMP/what-if.json"
+          python -m json.tool "$RUNNER_TEMP/what-if.json" > what-if-dev.json
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          name: bicep-what-if-dev
+          path: what-if-dev.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Attach what-if result to PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "### Azure Bicep what-if (dev)"
+            echo
+            echo "Full output: [workflow run artifacts]($RUN_URL)"
+            echo
+            echo '```json'
+            head -c 12000 what-if-dev.json
+            echo
+            echo '```'
+          } > "$RUNNER_TEMP/what-if-comment.md"
+          gh pr comment "$PR_NUMBER" --body-file "$RUNNER_TEMP/what-if-comment.md"

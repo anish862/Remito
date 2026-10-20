@@ -20,12 +20,15 @@ public static class DependencyInjection
             services.AddDbContext<RemitoDbContext>(options => options.UseSqlServer(databaseConnection));
         }
 
-        var redisConnection = configuration["Redis:ConnectionString"];
-        if (!string.IsNullOrWhiteSpace(redisConnection))
+        if (configuration.GetValue<bool?>("Redis:Enabled") != false)
         {
-            var connection = ConnectionMultiplexer.Connect(redisConnection);
-            services.AddSingleton<IConnectionMultiplexer>(connection);
-            services.AddSingleton<IRateCache, RedisRateCache>();
+            var redisConnection = configuration["Redis:ConnectionString"];
+            if (!string.IsNullOrWhiteSpace(redisConnection))
+            {
+                var connection = ConnectionMultiplexer.Connect(redisConnection);
+                services.AddSingleton<IConnectionMultiplexer>(connection);
+                services.AddSingleton<IRateCache, RedisRateCache>();
+            }
         }
 
         return services;

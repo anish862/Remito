@@ -1,0 +1,314 @@
+name: Backend CI and deployment
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: Environment to deploy the selected ref to
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      run_migrations:
+        description: Run pending EF migrations (requires approval in database-migrations)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  security-events: write
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-test:
+    name: backend-build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: backend/**/*.csproj
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: manual
+      - name: Restore
+        run: dotnet restore backend/Remito.sln
+      - name: Build
+        run: dotnet build backend/Remito.sln --configuration Release --no-restore
+      - name: Unit and Testcontainers integration tests
+        run: dotnet test backend/Remito.sln --configuration Release --no-build --logger "trx;LogFileName=backend-tests.trx"
+      - name: Scan NuGet dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet list backend/Remito.sln package --vulnerable --include-transitive | tee "$RUNNER_TEMP/nuget-vulnerabilities.txt"
+          if grep -Eiq 'has the following vulnerable packages|[[:space:]](Critical|High)[[:space:]]*$' "$RUNNER_TEMP/nuget-vulnerabilities.txt"; then
+            echo "::error::Vulnerable NuGet packages were found."
+            exit 1
+          fi
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:csharp
+      - name: Publish API
+        if: github.event_name != 'pull_request'
+        run: |
+          dotnet publish backend/Remito.Api/Remito.Api.csproj --configuration Release --no-restore --output "$RUNNER_TEMP/remito-api"
+          cd "$RUNNER_TEMP/remito-api"
+          zip -qr "$RUNNER_TEMP/remito-api.zip" .
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: backend-package
+          path: ${{ runner.temp }}/remito-api.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  dependency-review:
+    name: backend-dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  migrations:
+    name: gated-ef-migrations
+    if: >-
+      inputs.run_migrations == true &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build-test
+    runs-on: ubuntu-latest
+    environment: database-migrations
+    concurrency:
+      group: ef-migrations-${{ inputs.deploy_environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Run EF migrations when migrations exist
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.deploy_environment }}
+          SQL_SERVER_NAME_DEV: ${{ vars.SQL_SERVER_NAME_DEV }}
+          SQL_DATABASE_NAME_DEV: ${{ vars.SQL_DATABASE_NAME_DEV }}
+          SQL_SERVER_NAME_STAGING: ${{ vars.SQL_SERVER_NAME_STAGING }}
+          SQL_DATABASE_NAME_STAGING: ${{ vars.SQL_DATABASE_NAME_STAGING }}
+          SQL_SERVER_NAME_PROD: ${{ vars.SQL_SERVER_NAME_PROD }}
+          SQL_DATABASE_NAME_PROD: ${{ vars.SQL_DATABASE_NAME_PROD }}
+        run: |
+          if ! find backend/Remito.Infrastructure -type f -path '*/Migrations/*.cs' -print -quit | grep -q .; then
+            echo "No EF migrations are present; database update is not required."
+            exit 0
+          fi
+          case "$TARGET_ENVIRONMENT" in
+            dev)
+              SQL_SERVER_NAME="$SQL_SERVER_NAME_DEV"
+              SQL_DATABASE_NAME="$SQL_DATABASE_NAME_DEV"
+              ;;
+            staging)
+              SQL_SERVER_NAME="$SQL_SERVER_NAME_STAGING"
+              SQL_DATABASE_NAME="$SQL_DATABASE_NAME_STAGING"
+              ;;
+            prod)
+              SQL_SERVER_NAME="$SQL_SERVER_NAME_PROD"
+              SQL_DATABASE_NAME="$SQL_DATABASE_NAME_PROD"
+              ;;
+            *)
+              echo "::error::Unsupported migration target: $TARGET_ENVIRONMENT"
+              exit 1
+              ;;
+          esac
+          test -n "$SQL_SERVER_NAME"
+          test -n "$SQL_DATABASE_NAME"
+          dotnet tool install --global dotnet-ef --version 8.0.22
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          export ConnectionStrings__Default="Server=tcp:${SQL_SERVER_NAME}.database.windows.net,1433;Initial Catalog=${SQL_DATABASE_NAME};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication=Active Directory Default;"
+          dotnet ef database update \
+            --project backend/Remito.Infrastructure/Remito.Infrastructure.csproj \
+            --startup-project backend/Remito.Api/Remito.Api.csproj \
+            --configuration Release
+
+  deploy-dev:
+    name: deploy-dev
+    needs: [build-test, migrations]
+    if: >-
+      always() &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'dev')) &&
+      (needs.build-test.result == 'success') &&
+      (needs.migrations.result == 'success' || needs.migrations.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: dev
+    concurrency:
+      group: deploy-dev-${{ vars.APP_NAME }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-package
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.APP_NAME }}
+          slot-name: staging
+          package: remito-api.zip
+      - name: Check candidate health and swap
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          APP_NAME: ${{ vars.APP_NAME }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error "https://${APP_NAME}-staging.azurewebsites.net/health"; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "::error::The staging slot did not become healthy."
+              exit 1
+            fi
+            sleep 10
+          done
+          az webapp deployment slot swap --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --slot staging --target-slot production
+          for attempt in $(seq 1 6); do
+            if curl --fail --silent --show-error "https://${APP_NAME}.azurewebsites.net/health"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Production health check failed; restoring the previous slot."
+          az webapp deployment slot swap --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --slot staging --target-slot production
+          curl --fail --silent --show-error "https://${APP_NAME}.azurewebsites.net/health"
+          exit 1
+
+  deploy-staging:
+    name: deploy-staging
+    needs: [build-test, migrations]
+    if: >-
+      always() &&
+      ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && (inputs.deploy_environment == 'staging' || inputs.deploy_environment == 'prod'))) &&
+      (needs.build-test.result == 'success') &&
+      (needs.migrations.result == 'success' || needs.migrations.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: deploy-staging-${{ vars.APP_NAME }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-package
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.APP_NAME }}
+          slot-name: staging
+          package: remito-api.zip
+      - name: Check candidate health and swap
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          APP_NAME: ${{ vars.APP_NAME }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error "https://${APP_NAME}-staging.azurewebsites.net/health"; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "::error::The staging slot did not become healthy."
+              exit 1
+            fi
+            sleep 10
+          done
+          az webapp deployment slot swap --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --slot staging --target-slot production
+          for attempt in $(seq 1 6); do
+            if curl --fail --silent --show-error "https://${APP_NAME}.azurewebsites.net/health"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Production health check failed; restoring the previous slot."
+          az webapp deployment slot swap --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --slot staging --target-slot production
+          curl --fail --silent --show-error "https://${APP_NAME}.azurewebsites.net/health"
+          exit 1
+
+  deploy-production:
+    name: deploy-production
+    needs: [build-test, migrations, deploy-staging]
+    if: >-
+      always() &&
+      ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_environment == 'prod')) &&
+      (needs.build-test.result == 'success') &&
+      (needs.migrations.result == 'success' || needs.migrations.result == 'skipped') &&
+      (needs.deploy-staging.result == 'success')
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production-${{ vars.APP_NAME }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-package
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.APP_NAME }}
+          slot-name: staging
+          package: remito-api.zip
+      - name: Check candidate health and swap
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          APP_NAME: ${{ vars.APP_NAME }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error "https://${APP_NAME}-staging.azurewebsites.net/health"; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "::error::The staging slot did not become healthy."
+              exit 1
+            fi
+            sleep 10
+          done
+          az webapp deployment slot swap --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --slot staging --target-slot production
+          for attempt in $(seq 1 6); do
+            if curl --fail --silent --show-error "https://${APP_NAME}.azurewebsites.net/health"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Production health check failed; restoring the previous slot."
+          az webapp deployment slot swap --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --slot staging --target-slot production
+          curl --fail --silent --show-error "https://${APP_NAME}.azurewebsites.net/health"
+          exit 1

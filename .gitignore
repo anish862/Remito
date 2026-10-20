@@ -17,6 +17,8 @@ captures/
 .externalNativeBuild/
 .cxx/
 google-services.json
+*.jks
+*.keystore
 
 # Local configuration and IDE files
 .env

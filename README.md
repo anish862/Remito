@@ -70,7 +70,7 @@ Backend is a modular monolith with clean-architecture layers (Domain, Applicatio
 | Backend | ASP.NET Core 8, EF Core 8, SQL Server (Azure SQL), Redis, Hangfire, Polly, Serilog |
 | Admin | ASP.NET Core (Razor Pages or Blazor Server) |
 | Infra | Azure (App Service, Azure SQL, Redis, Key Vault, Blob, App Insights), Bicep |
-| CI/CD | GitHub Actions or Azure DevOps |
+| CI/CD | GitHub Actions |
 | Testing | xUnit, FluentAssertions, Testcontainers, JUnit5, MockK, Turbine, Compose UI tests, k6 |
 
 ## Repository structure
@@ -79,7 +79,7 @@ Backend is a modular monolith with clean-architecture layers (Domain, Applicatio
 /backend   Remito.sln (Api, Application, Domain, Infrastructure, Workers, tests)
 /android   Android project (app, core:*, feature:*)
 /admin     Step 14 placeholder
-/infra     Step 2 Bicep placeholder
+/infra     Azure Bicep modules and dev/staging/prod parameters
 /docs      architecture.md, adr/, progress.md
 ```
 
@@ -123,7 +123,7 @@ Open `/android` in Android Studio, create or select an API 26+ emulator, and run
 
 ### 4. Admin and infrastructure
 
-`/admin` and `/infra` are placeholders for Steps 14 and 2. They are not runnable applications or deployable infrastructure yet.
+`/admin` remains a placeholder. Infrastructure modules, environment parameters, pipeline setup, and rollback instructions are documented in [`docs/infra.md`](docs/infra.md). Azure names and GitHub OIDC/environment configuration must be set for your subscription before deploying.
 
 ## Configuration
 
@@ -163,11 +163,11 @@ Launch exit criteria: no open critical or high bugs, crash-free sessions above 9
 
 | Environment | Deploys on | Notes |
 |---|---|---|
-| dev | merge to `main` | Auto |
-| staging | version tag | Slot swap after health check |
-| prod | manual approval | Staged Play Store rollout 5, 20, 50, 100 percent |
+| dev | merge to `main` | Auto; slot health check and swap |
+| staging | version tag | Slot health check and swap |
+| prod | version tag, after staging | GitHub environment approval; slot health check and swap |
 
-Pipelines run build, tests, SAST, dependency scans, lint, and Bicep what-if on every PR.
+Pipelines run backend build, unit and Testcontainers integration tests, CodeQL and dependency scans; Android lint, ktlint, detekt, unit tests, and debug APK build; and Bicep build and PR what-if. See [`docs/infra.md`](docs/infra.md) for required GitHub environment settings and branch protection.
 
 ## Engineering standards
 
