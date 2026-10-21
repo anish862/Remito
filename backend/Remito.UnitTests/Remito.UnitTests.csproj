@@ -22,6 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\Remito.Workers\Fixtures\rates.json"
+             Link="Fixtures\rates.json"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Remito.Domain\Remito.Domain.csproj" />
     <ProjectReference Include="..\Remito.Application\Remito.Application.csproj" />
     <ProjectReference Include="..\Remito.Infrastructure\Remito.Infrastructure.csproj" />

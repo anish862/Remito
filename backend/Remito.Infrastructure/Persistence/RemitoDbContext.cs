@@ -16,6 +16,8 @@ public sealed class RemitoDbContext(DbContextOptions<RemitoDbContext> options) :
     public DbSet<RateSource> RateSources => Set<RateSource>();
     public DbSet<MarketRate> MarketRates => Set<MarketRate>();
     public DbSet<RateHistory> RateHistories => Set<RateHistory>();
+    public DbSet<RateQuarantine> RateQuarantines => Set<RateQuarantine>();
+    public DbSet<ManualRateOverride> ManualRateOverrides => Set<ManualRateOverride>();
     public DbSet<Exchange> Exchanges => Set<Exchange>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<ExchangeFee> ExchangeFees => Set<ExchangeFee>();

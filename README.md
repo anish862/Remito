@@ -105,6 +105,23 @@ dotnet user-secrets set --project backend/Remito.Api "Redis:ConnectionString" "l
 
 The API requires SQL Server configuration at startup. OTP authentication additionally requires Redis; in Development, the console sender reports delivery without writing OTPs or destinations to logs. Configure a real SMS/email sender outside local development.
 
+### Rates pipeline
+
+The worker registers a one-minute Hangfire rate-ingestion job and an hourly history roll-up job when `ConnectionStrings:Default` is configured. Apply EF migrations before starting it; run the Development worker locally with `dotnet run --project backend/Remito.Workers` to ingest the recorded fixture into local SQL and Redis (or the development in-memory cache when Redis is not configured). `Rates:Market:Endpoint` enables the licensed FX adapter; `Rates:Exchanges:Feeds` accepts one HTTPS feed definition per exchange with `Name`, `SourceId`, `Endpoint`, `Strategy` (`json`, `csv`, or `html`), `StalenessMinutes`, and optional request `Headers`. JSON and table/CSV inputs use `pair`, `bid`, `ask`, and optional `mid` fields/columns. Supply `Rates:Market:ApiKey` and exchange credentials through the host configuration provider backed by Key Vault; the market adapter also accepts the existing `RateProviders:ApiKey` setting. Use worker user-secrets locally. Credentials are never logged.
+
+Configure `Rates:Guards:MaximumVariancePercent` and per-pair `PairBounds`. Quotes outside the source freshness window or bounds are not published; large changes are persisted in `RateQuarantines` and logged as alert events. Provider outages retain the last good rate and mark SQL and Redis values stale. Configure an App Insights connection string for the worker to publish `RateFreshnessSeconds`, `RateFetchDurationMilliseconds`, `RateSourceFetchSucceeded`, and `RateQuarantineCount` metrics.
+
+Development workers load the recorded fixture in `backend/Remito.Workers/Fixtures/rates.json` and require only the local SQL connection. For an accuracy audit, export stored latest values and a second provider snapshot as CSV files with `pair,mid` columns, then run:
+
+```bash
+python3 backend/scripts/rate_accuracy_audit.py \
+  --stored stored-rates.csv \
+  --comparison second-source-rates.csv \
+  --threshold-percent 1
+```
+
+The audit reports missing pairs and above-threshold variance and exits non-zero for either condition.
+
 ### 2. Build and test the backend
 
 ```bash

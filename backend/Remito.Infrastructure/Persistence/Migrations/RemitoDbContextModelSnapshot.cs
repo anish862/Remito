@@ -379,8 +379,8 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Property<string>("FcmTokenHash")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .IsFixedLength()
-                        .HasColumnType("nchar(64)");
+                        .HasColumnType("nchar(64)")
+                        .IsFixedLength();
 
                     b.Property<string>("Platform")
                         .IsRequired()
@@ -657,6 +657,55 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.ToTable("Favourites");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.ManualRateOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Ask")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("Bid")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("Mid")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("Pair")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceId");
+
+                    b.HasIndex("Pair", "ExpiresAt");
+
+                    b.ToTable("ManualRateOverrides");
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.MarketRate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -821,6 +870,50 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .IsDescending(false, false, true);
 
                     b.ToTable("RateHistories");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.RateQuarantine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Ask")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("Bid")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateTimeOffset>("FetchedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("Mid")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<string>("Pair")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<DateTimeOffset>("QuarantinedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceId", "Pair", "QuarantinedAt");
+
+                    b.ToTable("RateQuarantines");
                 });
 
             modelBuilder.Entity("Remito.Domain.Entities.RateSource", b =>
@@ -1218,6 +1311,15 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.ManualRateOverride", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.RateSource", null)
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.MarketRate", b =>
                 {
                     b.HasOne("Remito.Domain.Entities.RateSource", "Source")
@@ -1227,6 +1329,15 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Source");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.RateQuarantine", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.RateSource", null)
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Remito.Domain.Entities.RedirectEvent", b =>

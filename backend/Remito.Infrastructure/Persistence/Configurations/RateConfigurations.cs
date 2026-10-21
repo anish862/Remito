@@ -72,6 +72,38 @@ internal sealed class RateHistoryConfiguration : IEntityTypeConfiguration<RateHi
         };
 }
 
+internal sealed class RateQuarantineConfiguration : IEntityTypeConfiguration<RateQuarantine>
+{
+    public void Configure(EntityTypeBuilder<RateQuarantine> builder)
+    {
+        builder.HasKey(quarantine => quarantine.Id);
+        builder.Property(quarantine => quarantine.Pair).HasMaxLength(7).IsRequired();
+        builder.Property(quarantine => quarantine.Bid).HasPrecision(18, 6);
+        builder.Property(quarantine => quarantine.Ask).HasPrecision(18, 6);
+        builder.Property(quarantine => quarantine.Mid).HasPrecision(18, 6);
+        builder.Property(quarantine => quarantine.Reason).HasMaxLength(500).IsRequired();
+        builder.HasIndex(quarantine => new { quarantine.SourceId, quarantine.Pair, quarantine.QuarantinedAt });
+        builder.HasOne<RateSource>().WithMany().HasForeignKey(quarantine => quarantine.SourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class ManualRateOverrideConfiguration : IEntityTypeConfiguration<ManualRateOverride>
+{
+    public void Configure(EntityTypeBuilder<ManualRateOverride> builder)
+    {
+        builder.HasKey(rateOverride => rateOverride.Id);
+        builder.Property(rateOverride => rateOverride.Pair).HasMaxLength(7).IsRequired();
+        builder.Property(rateOverride => rateOverride.Bid).HasPrecision(18, 6);
+        builder.Property(rateOverride => rateOverride.Ask).HasPrecision(18, 6);
+        builder.Property(rateOverride => rateOverride.Mid).HasPrecision(18, 6);
+        builder.Property(rateOverride => rateOverride.Reason).HasMaxLength(500).IsRequired();
+        builder.HasIndex(rateOverride => new { rateOverride.Pair, rateOverride.ExpiresAt });
+        builder.HasOne<RateSource>().WithMany().HasForeignKey(rateOverride => rateOverride.SourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 internal sealed class AlertConfiguration : IEntityTypeConfiguration<Alert>
 {
     public void Configure(EntityTypeBuilder<Alert> builder)

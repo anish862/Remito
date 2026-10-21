@@ -38,6 +38,33 @@ public sealed class RateHistory
     public decimal Value { get; set; }
 }
 
+public sealed class RateQuarantine
+{
+    public Guid Id { get; set; }
+    public required string Pair { get; set; }
+    public Guid SourceId { get; set; }
+    public decimal Bid { get; set; }
+    public decimal Ask { get; set; }
+    public decimal Mid { get; set; }
+    public DateTimeOffset FetchedAt { get; set; }
+    public required string Reason { get; set; }
+    public DateTimeOffset QuarantinedAt { get; set; }
+}
+
+public sealed class ManualRateOverride
+{
+    public Guid Id { get; set; }
+    public required string Pair { get; set; }
+    public Guid SourceId { get; set; }
+    public decimal Bid { get; set; }
+    public decimal Ask { get; set; }
+    public decimal Mid { get; set; }
+    public required string Reason { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+}
+
 public enum HistoryBucket
 {
     OneDay,
