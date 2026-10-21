@@ -12,7 +12,7 @@ public sealed class ConsoleOtpSender : IOtpSender
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Console.Out.WriteLine($"[DEV OTP] {channel} destination={destination} code={code}");
+        Console.Out.WriteLine($"[DEV OTP] Delivery requested via {channel}.");
         return Task.CompletedTask;
     }
 }

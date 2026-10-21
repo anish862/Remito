@@ -103,7 +103,7 @@ dotnet user-secrets set --project backend/Remito.Api "ConnectionStrings:Default"
 dotnet user-secrets set --project backend/Remito.Api "Redis:ConnectionString" "localhost:6379"
 ```
 
-The API requires SQL Server configuration at startup. OTP authentication additionally requires Redis; in Development, requested OTPs are printed by the console sender. Do not use that sender outside local development.
+The API requires SQL Server configuration at startup. OTP authentication additionally requires Redis; in Development, the console sender reports delivery without writing OTPs or destinations to logs. Configure a real SMS/email sender outside local development.
 
 ### 2. Build and test the backend
 

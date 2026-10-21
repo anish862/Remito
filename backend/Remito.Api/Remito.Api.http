@@ -1,32 +1,94 @@
 @baseUrl = http://localhost:5191/api/v1
+@accessToken = example-access-token
+@refreshToken = example-refresh-token
+@otpCode = 123456
 @resourceId = 8f5f600e-f80c-422b-ac18-4967b99b9052
 @exchangeId = 6df7d0cc-6fbb-4859-9e3a-9b9e9510e15f
 @corridorId = 0f43b2c9-44b3-4b91-8e7f-2aa9e19ecb01
 @rateSourceId = 8f5f600e-f80c-422b-ac18-4967b99b9052
 
-### Exchange identity token
-POST {{baseUrl}}/auth/token
+### Request an email sign-in code
+POST {{baseUrl}}/auth/otp/request
 Content-Type: application/json
 
-{ "idToken": "example-identity-provider-token" }
+{ "channel": "email", "destination": "user@example.com" }
+
+### Verify the sign-in code
+POST {{baseUrl}}/auth/otp/verify
+Content-Type: application/json
+
+{ "channel": "email", "destination": "user@example.com", "code": "{{otpCode}}" }
+
+### Request a phone sign-in code (alternative channel)
+POST {{baseUrl}}/auth/otp/request
+Content-Type: application/json
+
+{ "channel": "phone", "destination": "+96891234567" }
+
+### Verify the phone sign-in code
+POST {{baseUrl}}/auth/otp/verify
+Content-Type: application/json
+
+{ "channel": "phone", "destination": "+96891234567", "code": "{{otpCode}}" }
 
 ### Refresh token
 POST {{baseUrl}}/auth/refresh
 Content-Type: application/json
 
-{ "refreshToken": "example-refresh-token" }
+{ "refreshToken": "{{refreshToken}}" }
 
-### Revoke token
+### Logout and revoke the refresh-token family
 POST {{baseUrl}}/auth/logout
 Content-Type: application/json
 
-{ "refreshToken": "example-refresh-token" }
+{ "refreshToken": "{{refreshToken}}" }
+
+### Get the authenticated user's profile
+GET {{baseUrl}}/me
+Authorization: Bearer {{accessToken}}
+
+### Update the authenticated user's profile
+PATCH {{baseUrl}}/me
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "displayName": "Remito User" }
+
+### Delete the authenticated user's account
+DELETE {{baseUrl}}/me
+Authorization: Bearer {{accessToken}}
+
+### Get consent state
+GET {{baseUrl}}/me/consents
+Authorization: Bearer {{accessToken}}
+
+### Record terms consent
+PUT {{baseUrl}}/me/consents/terms
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "isGranted": true, "version": "1" }
+
+### Record privacy consent
+PUT {{baseUrl}}/me/consents/privacy
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "isGranted": true, "version": "1" }
+
+### Update marketing consent
+PUT {{baseUrl}}/me/consents/marketing
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "isGranted": false, "version": "1" }
 
 ### List devices
 GET {{baseUrl}}/devices
 
 ### Register device
 POST {{baseUrl}}/devices
+Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 { "fcmToken": "example-fcm-token", "platform": "android" }

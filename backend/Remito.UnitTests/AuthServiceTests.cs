@@ -86,13 +86,14 @@ public sealed class AuthServiceTests
     {
         await using var fixture = await CreateFixtureAsync();
         await fixture.Service.RequestOtpAsync(OtpChannel.Email, "lock@example.com", "192.0.2.4", default);
+        var incorrectCode = fixture.Sender.LastCode == "000000" ? "000001" : "000000";
 
         for (var attempt = 0; attempt < 5; attempt++)
         {
             await Assert.ThrowsAsync<AuthOperationException>(() => fixture.Service.VerifyOtpAsync(
                 OtpChannel.Email,
                 "lock@example.com",
-                "000000",
+                incorrectCode,
                 "192.0.2.4",
                 default));
         }
