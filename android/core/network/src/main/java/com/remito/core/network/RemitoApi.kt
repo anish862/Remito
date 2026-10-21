@@ -11,6 +11,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import java.math.BigDecimal
 
+@Suppress("TooManyFunctions")
 interface RemitoApi {
     @POST("auth/otp/request")
     suspend fun requestOtp(
@@ -88,6 +89,7 @@ interface RemitoApi {
     ): Response<MarketRateDto>
 
     @GET("rates/history")
+    @Suppress("LongParameterList")
     suspend fun rateHistory(
         @Query("pair") pair: String,
         @Query("bucket") bucket: HistoryBucket,
@@ -240,6 +242,7 @@ interface RemitoApi {
     ): Response<NewsItemDto>
 
     @GET("admin/audit-logs")
+    @Suppress("LongParameterList")
     suspend fun adminAuditLogs(
         @Query("entityType") entityType: String? = null,
         @Query("entityId") entityId: String? = null,
