@@ -166,6 +166,7 @@ public sealed class RateIngestionJob(
                 if (latest is not null)
                 {
                     latest.IsStale = true;
+                    cacheUpdates.Add(latest);
                 }
 
                 logger.LogWarning(
@@ -254,7 +255,8 @@ public sealed class RateIngestionJob(
                     rate.Mid,
                     rate.SourceId,
                     rate.FetchedAt,
-                    rate.IsStale));
+                    rate.IsStale,
+                    (int)provider.StalenessThreshold.TotalMinutes));
                 await rateCache.SetAsync(
                     $"rates:latest:{rate.Pair.Replace("/", "-", StringComparison.Ordinal)}:{rate.SourceId:N}",
                     payload,
@@ -269,6 +271,11 @@ public sealed class RateIngestionJob(
                     provider.SourceName,
                     rate.Pair);
             }
+        }
+
+        foreach (var pair in cacheUpdates.Select(rate => rate.Pair).Distinct(StringComparer.Ordinal))
+        {
+            await PublishLatestCacheAsync(pair, cancellationToken);
         }
     }
 
@@ -344,7 +351,8 @@ public sealed class RateIngestionJob(
                         rate.Mid,
                         rate.SourceId,
                         rate.FetchedAt,
-                        IsStale: true));
+                        IsStale: true,
+                        (int)provider.StalenessThreshold.TotalMinutes));
                     await rateCache.SetAsync(
                         $"rates:latest:{rate.Pair.Replace("/", "-", StringComparison.Ordinal)}:{rate.SourceId:N}",
                         payload,
@@ -359,6 +367,8 @@ public sealed class RateIngestionJob(
                         provider.SourceName,
                         rate.Pair);
                 }
+
+                await PublishLatestCacheAsync(rate.Pair, cancellationToken);
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -370,6 +380,62 @@ public sealed class RateIngestionJob(
         }
     }
 
+    private async Task PublishLatestCacheAsync(string pair, CancellationToken cancellationToken)
+    {
+        var rates = await dbContext.MarketRates.AsNoTracking()
+            .Include(rate => rate.Source)
+            .Where(rate => rate.Pair == pair)
+            .ToListAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        var latest = rates
+            .GroupBy(rate => rate.SourceId)
+            .Select(group => group.MaxBy(rate => rate.FetchedAt)!)
+            .Select(rate =>
+            {
+                var staleness = providers.FirstOrDefault(provider => provider.SourceId == rate.SourceId)
+                    ?.StalenessThreshold
+                    ?? (rate.Source.Type == RateSourceType.Provider
+                        ? TimeSpan.FromMinutes(15)
+                        : TimeSpan.FromMinutes(60));
+                return new
+                {
+                    Rate = rate,
+                    Staleness = staleness,
+                    IsStale = rate.IsStale || now - rate.FetchedAt > staleness
+                };
+            })
+            .OrderBy(candidate => candidate.IsStale)
+            .ThenBy(candidate => candidate.Rate.Source.Priority)
+            .ThenByDescending(candidate => candidate.Rate.FetchedAt)
+            .FirstOrDefault();
+        if (latest is null)
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(new CachedRate(
+            pair,
+            latest.Rate.Bid,
+            latest.Rate.Ask,
+            latest.Rate.Mid,
+            latest.Rate.SourceId,
+            latest.Rate.FetchedAt,
+            latest.IsStale,
+            (int)latest.Staleness.TotalMinutes));
+        try
+        {
+            await rateCache.SetAsync(
+                $"rates:latest:{pair.Replace("/", "-", StringComparison.Ordinal)}",
+                payload,
+                TimeSpan.FromHours(24),
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogError(exception, "Could not publish aggregate latest rate cache. Pair={Pair}", pair);
+        }
+    }
+
     private sealed record CachedRate(
         string Pair,
         decimal Bid,
@@ -377,5 +443,6 @@ public sealed class RateIngestionJob(
         decimal Mid,
         Guid SourceId,
         DateTimeOffset FetchedAt,
-        bool IsStale);
+        bool IsStale,
+        int StalenessMinutes);
 }

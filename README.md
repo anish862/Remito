@@ -122,6 +122,61 @@ python3 backend/scripts/rate_accuracy_audit.py \
 
 The audit reports missing pairs and above-threshold variance and exits non-zero for either condition.
 
+The API exposes `GET /api/v1/rates/latest?base=OMR&symbols=INR,AED`, `GET /api/v1/rates/history?pair=OMR-INR&range=1D`, and `POST /api/v1/convert` with `{"amount":10,"from":"OMR","to":"INR"}`. Latest rates use the aggregate Redis cache and fall back to SQL; stale values remain available with `isStale: true`. Latest responses include an ETag and a 15-second public cache lifetime. Conversion accepts positive amounts up to 1 trillion, rejects same-currency conversions, uses USD as the cross-rate pivot when needed, and rounds to the destination currency precision using midpoint-to-even (banker's) rounding.
+
+To measure local cached latest-rate latency, install [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) and run the Development API and rate worker as described below. The test warms the route under a 20-virtual-user load and fails if P95 reaches 200 ms:
+
+```bash
+k6 run backend/scripts/rates-cache-load.js
+```
+
+Use `API_BASE_URL` to target another local API URL. k6 prints the measured `http_req_duration` P95 in its summary. Record the date, machine, runtime, and P95 next to the task's progress entry when benchmarking a new environment; a local result does not predict production latency.
+
+### Local installation
+
+From the repository root, install the .NET 8 SDK and Docker, then start SQL Server and Redis. Keep the local SQL password out of source control:
+
+```bash
+export MSSQL_SA_PASSWORD='Choose_a_local_password_123!'
+docker compose up -d
+dotnet user-secrets set --project backend/Remito.Api "ConnectionStrings:Default" \
+  "Server=localhost,1433;Database=Remito;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+dotnet user-secrets set --project backend/Remito.Api "Redis:ConnectionString" "localhost:6379"
+dotnet user-secrets set --project backend/Remito.Workers "ConnectionStrings:Default" \
+  "Server=localhost,1433;Database=Remito;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+dotnet user-secrets set --project backend/Remito.Workers "Redis:ConnectionString" "localhost:6379"
+```
+
+Apply the database migrations once (`dotnet ef` 8.0.22 is required):
+
+```bash
+dotnet tool install --global dotnet-ef --version 8.0.22
+dotnet ef database update --project backend/Remito.Infrastructure --startup-project backend/Remito.Api
+```
+
+Run the API and worker in separate terminals from the repository root. Development configuration enables the recorded fixture rates; Swagger is available at `http://localhost:5191/swagger`.
+
+```bash
+dotnet run --project backend/Remito.Api
+dotnet run --project backend/Remito.Workers
+```
+
+The local worker applies recurring ingestion and history roll-up jobs. To check the endpoint contracts and implementation, run:
+
+```bash
+DOTNET_ROLL_FORWARD=Major dotnet test backend/Remito.UnitTests --filter FullyQualifiedName~RateQueryServiceTests
+DOTNET_ROLL_FORWARD=Major dotnet test backend/Remito.IntegrationTests --filter FullyQualifiedName~Swagger_includes_passwordless_auth_and_bearer_security
+```
+
+### Production installation
+
+Production is deployed to Azure App Service using the Bicep environment definitions and GitHub Actions; do not install the API or worker manually on a developer workstation. Follow [`docs/infra.md`](docs/infra.md) to configure GitHub OIDC, the Azure subscription and environment approvals, provision the production SQL/Redis/Key Vault/App Insights resources, and deploy `infra/environments/prod.bicepparam`. Before enabling traffic:
+
+1. Add provider credentials and the JWT/OTP signing secrets to the private Key Vault using the approved secret-provisioning process; grant the API and worker managed identities only the required Key Vault, SQL, and Redis access. Never put secret values in app settings or command history.
+2. Configure production SQL and Redis connection settings as Key Vault references, production `Rates:Market` and `Rates:Exchanges` provider settings, App Insights, and the production sender for SMS/email. Keep the Development fixture provider disabled.
+3. Run the database migration workflow with the designated migration identity and required DDL role, then deploy the API and worker using the protected production environment. Verify `/health`, `/swagger` in a non-production slot, latest-rate freshness, history, conversion, and App Insights rate metrics before the approved slot swap.
+4. Run `backend/scripts/rates-cache-load.js` against the production-like staging slot with `API_BASE_URL` set to that slot. Capture the k6 summary (especially P95), machine/load settings, and date in the release record. Do not treat a developer-local benchmark as a production performance guarantee.
+
 ### 2. Build and test the backend
 
 ```bash
@@ -191,6 +246,17 @@ Launch exit criteria: no open critical or high bugs, crash-free sessions above 9
 | prod | version tag, after staging | GitHub environment approval; slot health check and swap |
 
 Pipelines run backend build, unit and Testcontainers integration tests, CodeQL and dependency scans; Android lint, ktlint, detekt, unit tests, and debug APK build; and Bicep build and PR what-if. See [`docs/infra.md`](docs/infra.md) for required GitHub environment settings and branch protection.
+
+## Current implementation progress
+
+| Area | Status | Delivered / remaining |
+|---|---|---|
+| Passwordless phone/email OTP and token lifecycle | Implemented | OTP abuse protections, refresh-token rotation/reuse detection, audit logging, and account/device/consent routes are in the backend. |
+| Rate ingestion pipeline | Implemented | Configurable providers, guards/quarantine, SQL history, Redis hot cache, Hangfire jobs, freshness metrics, fixtures, and accuracy audit script are in place. |
+| Latest rates, history, and conversion API | Implemented | Redis-first reads with SQL fallback, stale flags, ETag/cache headers, 200-point history downsampling, USD cross-rates, ISO currency precision, and banker's rounding. |
+| Endpoint correctness and performance QA | In progress | Unit and OpenAPI contract tests are being run for this change. Record the k6 P95 after running the local or staging load test; target is under 200 ms from cache. |
+| Production rollout | Remaining | Provision environment secrets/provider credentials, run the protected migration/deployment workflow, and capture staging/production load evidence as described above. |
+| Product integrations | Remaining | Android UI/API wiring and the admin portal are not delivered by these backend tasks; validate the licensed provider contracts and production alert recipients before launch. |
 
 ## Engineering standards
 

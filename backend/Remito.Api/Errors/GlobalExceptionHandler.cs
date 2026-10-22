@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Remito.Application.Auth;
+using Remito.Application.Rates;
 
 namespace Remito.Api.Errors;
 
@@ -11,6 +12,26 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is RateQueryException rateException)
+        {
+            httpContext.Response.StatusCode = rateException.StatusCode;
+            httpContext.Response.ContentType = "application/problem+json";
+            await httpContext.Response.WriteAsJsonAsync(
+                new ProblemDetails
+                {
+                    Status = rateException.StatusCode,
+                    Title = rateException.StatusCode == StatusCodes.Status404NotFound
+                        ? "Rate not found"
+                        : "Invalid rate request",
+                    Detail = rateException.Message,
+                    Instance = httpContext.Request.Path
+                },
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken: cancellationToken);
+            return true;
+        }
+
         if (exception is AuthOperationException authException)
         {
             httpContext.Response.StatusCode = authException.StatusCode;

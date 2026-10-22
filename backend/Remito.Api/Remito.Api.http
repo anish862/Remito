@@ -102,14 +102,18 @@ GET {{baseUrl}}/currencies
 ### Get currency
 GET {{baseUrl}}/currencies/INR
 
-### Latest market rate
-GET {{baseUrl}}/rates/latest?pair=OMR%2FINR
+### Latest market rates
+GET {{baseUrl}}/rates/latest?base=OMR&symbols=INR,AED
+If-None-Match: "previous-etag-value"
 
 ### Rate history
-GET {{baseUrl}}/rates/history?pair=OMR%2FINR&bucket=1D&page=1&pageSize=50
+GET {{baseUrl}}/rates/history?pair=OMR-INR&range=1D
 
 ### Convert amount
-GET {{baseUrl}}/convert?from=OMR&to=INR&amount=10
+POST {{baseUrl}}/convert
+Content-Type: application/json
+
+{ "amount": 10, "from": "OMR", "to": "INR" }
 
 ### List exchanges
 GET {{baseUrl}}/exchanges?page=1&pageSize=20

@@ -32,6 +32,15 @@ public sealed class HealthEndpointTests : IAsyncLifetime
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var paths = document.RootElement.GetProperty("paths");
         Assert.True(paths.TryGetProperty("/api/v1/auth/otp/request", out _));
+        Assert.True(paths.TryGetProperty("/api/v1/rates/latest", out var latest));
+        Assert.True(paths.TryGetProperty("/api/v1/rates/history", out var history));
+        Assert.True(paths.TryGetProperty("/api/v1/convert", out var convert));
+        Assert.True(latest.TryGetProperty("get", out _));
+        Assert.True(history.TryGetProperty("get", out _));
+        Assert.True(convert.TryGetProperty("post", out var convertPost));
+        Assert.True(convertPost.TryGetProperty("requestBody", out _));
+        Assert.True(document.RootElement.GetProperty("components")
+            .GetProperty("schemas").TryGetProperty("CurrencyConversionResponse", out _));
         Assert.True(document.RootElement.GetProperty("components")
             .GetProperty("securitySchemes").TryGetProperty("Bearer", out _));
     }

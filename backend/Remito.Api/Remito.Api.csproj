@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Remito.Api</RootNamespace>
+    <UserSecretsId>dotnet-Remito.Api-f1600a10-1c83-4bd1-a79a-972c113c3f53</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

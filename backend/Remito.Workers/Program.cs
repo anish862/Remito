@@ -1,4 +1,6 @@
 using Hangfire;
+using Hangfire.Common;
+using Microsoft.Extensions.DependencyInjection;
 using Remito.Infrastructure;
 using Remito.Infrastructure.Rates;
 
@@ -16,14 +18,17 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 var host = builder.Build();
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
-    RecurringJob.AddOrUpdate<RateIngestionJob>(
+    var recurringJobs = host.Services.GetRequiredService<IRecurringJobManager>();
+    recurringJobs.AddOrUpdate(
         "rates-ingestion",
-        job => job.RunAsync(CancellationToken.None),
-        Cron.Minutely);
-    RecurringJob.AddOrUpdate<RateHistoryRollupJob>(
+        Job.FromExpression<RateIngestionJob>(job => job.RunAsync(CancellationToken.None)),
+        Cron.Minutely(),
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    recurringJobs.AddOrUpdate(
         "rates-history-rollup",
-        job => job.RunAsync(CancellationToken.None),
-        Cron.Hourly);
+        Job.FromExpression<RateHistoryRollupJob>(job => job.RunAsync(CancellationToken.None)),
+        Cron.Hourly(),
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 }
 
 host.Run();
