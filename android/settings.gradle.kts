@@ -18,5 +18,5 @@ rootProject.name = "Remito"
 include(":app")
 include(":core:ui", ":core:network", ":core:database", ":core:common")
 include(":feature:dashboard", ":feature:convert", ":feature:history")
-include(":feature:compare", ":feature:alerts", ":feature:profile")
+include(":feature:compare", ":feature:alerts", ":feature:profile", ":feature:news", ":feature:favourites")
 include(":feature:auth")

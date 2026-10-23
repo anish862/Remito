@@ -28,6 +28,7 @@ dependencies {
     kapt(libs.room.compiler)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.room.ktx)
+    androidTestImplementation(libs.room.testing)
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
 }

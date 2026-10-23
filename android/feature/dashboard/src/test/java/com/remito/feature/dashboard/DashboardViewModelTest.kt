@@ -2,9 +2,9 @@ package com.remito.feature.dashboard
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.remito.core.common.UserSettings
 import com.remito.core.database.CachedRateEntity
-import com.remito.core.database.FavouriteEntity
-import com.remito.core.database.RateDao
+import com.remito.core.network.EngagementRepository
 import com.remito.core.network.RatesRepository
 import io.mockk.coEvery
 import io.mockk.every
@@ -30,14 +30,17 @@ class DashboardViewModelTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val repository = mockk<RatesRepository>()
-                val dao = mockk<RateDao>()
+                val engagementRepository = mockk<EngagementRepository>()
+                val userSettings = mockk<UserSettings>()
+                every { userSettings.defaultCorridor() } returns "OMR/INR"
                 every { repository.observeRates("OMR") } returns
                     flowOf(listOf(CachedRateEntity("OMR/INR", "216.7", "0.4", "2025-01-01T00:00:00Z", false)))
-                every { dao.observeFavourites() } returns flowOf(emptyList<FavouriteEntity>())
+                every { engagementRepository.observeFavourites() } returns flowOf(emptyList())
+                coEvery { engagementRepository.refreshFavourites() } returns emptyList()
                 coEvery { repository.refreshRates(any(), any()) } throws IOException("Offline")
                 coEvery { repository.markCachedRatesStale() } returns Unit
 
-                val viewModel = DashboardViewModel(repository, dao, SavedStateHandle())
+                val viewModel = DashboardViewModel(repository, engagementRepository, userSettings, SavedStateHandle())
                 advanceUntilIdle()
 
                 viewModel.uiState.test {

@@ -326,6 +326,9 @@ data class RedirectResponseDto(
 )
 
 enum class FavouriteType {
+    @Json(name = "currency")
+    CURRENCY,
+
     @Json(name = "exchange")
     EXCHANGE,
 
@@ -336,7 +339,8 @@ enum class FavouriteType {
 @JsonClass(generateAdapter = false)
 data class FavouriteRequest(
     val type: FavouriteType,
-    val targetId: String,
+    val targetId: String? = null,
+    val currencyCode: String? = null,
 )
 
 @JsonClass(generateAdapter = false)
@@ -345,6 +349,7 @@ data class FavouriteDto(
     val type: FavouriteType,
     val targetId: String,
     val createdAt: String,
+    val targetCode: String? = null,
 )
 
 enum class AlertDirection {
@@ -360,12 +365,9 @@ data class AlertRequest(
     val pair: String,
     val direction: AlertDirection,
     val target: BigDecimal,
-)
-
-@JsonClass(generateAdapter = false)
-data class AlertUpdate(
-    val target: BigDecimal? = null,
-    val isActive: Boolean? = null,
+    val isActive: Boolean = true,
+    val isOneTime: Boolean = false,
+    val dailySummary: Boolean = false,
 )
 
 @JsonClass(generateAdapter = false)
@@ -376,6 +378,24 @@ data class AlertDto(
     val target: BigDecimal,
     val isActive: Boolean,
     val lastTriggeredAt: String? = null,
+    val isOneTime: Boolean = false,
+    val dailySummary: Boolean = false,
+)
+
+@JsonClass(generateAdapter = false)
+data class NotificationPreferencesDto(
+    val rateAlertsEnabled: Boolean,
+    val dailySummaryEnabled: Boolean,
+    val quietHoursStartMinute: Int? = null,
+    val quietHoursEndMinute: Int? = null,
+)
+
+@JsonClass(generateAdapter = false)
+data class NotificationPreferencesUpdate(
+    val rateAlertsEnabled: Boolean,
+    val dailySummaryEnabled: Boolean,
+    val quietHoursStartMinute: Int? = null,
+    val quietHoursEndMinute: Int? = null,
 )
 
 @JsonClass(generateAdapter = false)

@@ -3,10 +3,11 @@ package com.remito.feature.dashboard
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.remito.core.database.FavouriteEntity
-import com.remito.core.database.RateDao
+import com.remito.core.common.UserSettings
+import com.remito.core.network.EngagementRepository
 import com.remito.core.network.RatesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -44,17 +45,22 @@ class DashboardViewModel
     @Inject
     constructor(
         private val repository: RatesRepository,
-        private val dao: RateDao,
+        private val engagementRepository: EngagementRepository,
+        userSettings: UserSettings,
         private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val baseCurrency = savedStateHandle["base"] ?: "OMR"
+        private val baseCurrency =
+            savedStateHandle["base"] ?: userSettings.defaultCorridor().substringBefore('/')
         private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
         val uiState: StateFlow<DashboardUiState> = _uiState
         private var allRates: List<DashboardRate> = emptyList()
 
         init {
             viewModelScope.launch {
-                combine(repository.observeRates(baseCurrency), dao.observeFavourites()) { rates, favourites ->
+                combine(
+                    repository.observeRates(baseCurrency),
+                    engagementRepository.observeFavourites(),
+                ) { rates, favourites ->
                     val favouriteIds = favourites.map { it.targetId }.toSet()
                     allRates =
                         rates.map {
@@ -64,7 +70,7 @@ class DashboardViewModel
                                 it.change24HoursPercent,
                                 it.lastUpdated,
                                 it.isStale,
-                                it.pair in favouriteIds,
+                                it.pair.substringAfter('/') in favouriteIds,
                             )
                         }
                 }.collect { rates ->
@@ -77,6 +83,16 @@ class DashboardViewModel
                             query = savedStateHandle["query"] ?: previous?.query.orEmpty(),
                             error = previous?.error,
                         )
+                }
+            }
+            viewModelScope.launch {
+                try {
+                    engagementRepository.refreshFavourites()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    val latest = _uiState.value as? DashboardUiState.Content
+                    if (latest != null) _uiState.value = latest.copy(error = error.message)
                 }
             }
             refresh()
@@ -94,10 +110,13 @@ class DashboardViewModel
 
         fun toggleFavourite(pair: String) {
             viewModelScope.launch {
-                if (dao.getFavourite(pair) != null) {
-                    dao.removeFavourite(pair)
-                } else {
-                    dao.upsertFavourite(FavouriteEntity(pair, "corridor"))
+                try {
+                    engagementRepository.toggleCurrencyFavourite(pair.substringAfter('/'))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    val current = _uiState.value as? DashboardUiState.Content ?: return@launch
+                    _uiState.value = current.copy(error = error.message)
                 }
             }
         }
@@ -107,7 +126,10 @@ class DashboardViewModel
             _uiState.value = current?.copy(isRefreshing = true, error = null) ?: DashboardUiState.Loading
             viewModelScope.launch {
                 try {
-                    repository.refreshRates(baseCurrency, listOf("INR", "AED", "USD", "EUR", "GBP"))
+                    repository.refreshRates(
+                        baseCurrency,
+                        listOf("OMR", "INR", "AED", "USD", "EUR", "GBP").filterNot { it == baseCurrency },
+                    )
                     val latest = _uiState.value as? DashboardUiState.Content
                     if (latest != null) {
                         _uiState.value = latest.copy(isRefreshing = false, error = null)

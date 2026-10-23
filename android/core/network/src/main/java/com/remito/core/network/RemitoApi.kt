@@ -135,7 +135,7 @@ interface RemitoApi {
     suspend fun favourites(
         @Query("page") page: Int = 1,
         @Query("pageSize") pageSize: Int = 20,
-    ): Response<PagedResponse<FavouriteDto>>
+    ): Response<List<FavouriteDto>>
 
     @POST("favourites")
     suspend fun addFavourite(
@@ -151,7 +151,7 @@ interface RemitoApi {
     suspend fun alerts(
         @Query("page") page: Int = 1,
         @Query("pageSize") pageSize: Int = 20,
-    ): Response<PagedResponse<AlertDto>>
+    ): Response<List<AlertDto>>
 
     @POST("alerts")
     suspend fun createAlert(
@@ -161,7 +161,7 @@ interface RemitoApi {
     @PATCH("alerts/{id}")
     suspend fun updateAlert(
         @Path("id") id: String,
-        @Body request: AlertUpdate,
+        @Body request: AlertRequest,
     ): Response<AlertDto>
 
     @DELETE("alerts/{id}")
@@ -173,12 +173,20 @@ interface RemitoApi {
     suspend fun news(
         @Query("page") page: Int = 1,
         @Query("pageSize") pageSize: Int = 20,
-    ): Response<PagedResponse<NewsItemDto>>
+    ): Response<List<NewsItemDto>>
 
     @GET("news/{slug}")
     suspend fun newsItem(
         @Path("slug") slug: String,
     ): Response<NewsItemDto>
+
+    @GET("notification-preferences")
+    suspend fun notificationPreferences(): Response<NotificationPreferencesDto>
+
+    @PUT("notification-preferences")
+    suspend fun updateNotificationPreferences(
+        @Body request: NotificationPreferencesUpdate,
+    ): Response<NotificationPreferencesDto>
 
     @GET("ads/slots/{slot}")
     suspend fun adSlot(

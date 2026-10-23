@@ -12,4 +12,16 @@
     <string name="tab_alerts_description">Rate alerts tab</string>
     <string name="tab_profile">Profile</string>
     <string name="tab_profile_description">Profile tab</string>
+    <string name="tab_favourites">Favourites</string>
+    <string name="tab_favourites_description">Favourite currencies and exchanges</string>
+    <string name="tab_news">News</string>
+    <string name="tab_news_description">Foreign exchange news</string>
+    <string name="notification_channel_alerts">Rate alerts</string>
+    <string name="notification_channel_news">News</string>
+    <string name="notification_channel_offers">Offers</string>
+    <string name="notification_default_title">Remito update</string>
+    <string name="notification_default_body">Open Remito to view the latest update.</string>
+    <string name="push_configuration_missing">Push messaging is not configured for this build.</string>
+    <string name="push_registration_failed">Could not register this device for push notifications. Retry from this screen.</string>
+    <string name="push_token_failed">Could not obtain a push token. Check Firebase configuration and retry.</string>
 </resources>

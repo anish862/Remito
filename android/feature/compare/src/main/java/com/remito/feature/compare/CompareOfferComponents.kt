@@ -10,10 +10,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,13 +43,19 @@ private const val MONEY_DECIMAL_PLACES = 2
 private const val DETAILS_PADDING_DP = 24
 private const val OFFER_PADDING_DP = 14
 
+internal data class ExchangeOfferActions(
+    val onFavouriteClick: () -> Unit,
+    val onDetails: () -> Unit,
+    val onChoose: () -> Unit,
+)
+
 @Composable
 internal fun ExchangeOfferCard(
     offer: ExchangeOfferDto,
     from: String,
     to: String,
-    onDetails: () -> Unit,
-    onChoose: () -> Unit,
+    isFavourite: Boolean,
+    actions: ExchangeOfferActions,
 ) {
     val locale = LocalContext.current.resources.configuration.locales[0] ?: Locale.getDefault()
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -52,7 +63,7 @@ internal fun ExchangeOfferCard(
             modifier = Modifier.fillMaxWidth().padding(OFFER_PADDING_DP.dp),
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            OfferHeader(offer)
+            OfferHeader(offer, isFavourite, actions.onFavouriteClick)
             Text(
                 stringResource(
                     R.string.compare_rate,
@@ -88,10 +99,10 @@ internal fun ExchangeOfferCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDetails, modifier = Modifier.heightIn(min = 48.dp)) {
+                TextButton(onClick = actions.onDetails, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.compare_details))
                 }
-                Button(onClick = onChoose, modifier = Modifier.heightIn(min = 48.dp)) {
+                Button(onClick = actions.onChoose, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.compare_choose))
                 }
             }
@@ -100,7 +111,11 @@ internal fun ExchangeOfferCard(
 }
 
 @Composable
-private fun OfferHeader(offer: ExchangeOfferDto) {
+private fun OfferHeader(
+    offer: ExchangeOfferDto,
+    isFavourite: Boolean,
+    onFavouriteClick: () -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         ExchangeLogo(offer.logo, offer.name, Modifier.size(42.dp))
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
@@ -121,6 +136,16 @@ private fun OfferHeader(offer: ExchangeOfferDto) {
                         modifier = Modifier.heightIn(min = 40.dp),
                     )
                 }
+            }
+            IconButton(onClick = onFavouriteClick) {
+                Icon(
+                    imageVector = if (isFavourite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    contentDescription =
+                        stringResource(
+                            if (isFavourite) R.string.compare_remove_favourite else R.string.compare_add_favourite,
+                            offer.name,
+                        ),
+                )
             }
         }
     }

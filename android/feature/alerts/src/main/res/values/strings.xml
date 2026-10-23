@@ -1,3 +1,13 @@
 <resources>
-    <string name="alerts_title">Alerts</string>
+    <string name="alerts_title">Rate alerts</string>
+    <string name="alert_pair">Currency pair (for example OMR/INR)</string>
+    <string name="alert_above">Above</string>
+    <string name="alert_below">Below</string>
+    <string name="alert_target">Target rate</string>
+    <string name="alert_repeat">Repeat when triggered</string>
+    <string name="alert_create">Create alert</string>
+    <string name="alerts_empty">No alerts yet. Create one to be notified when a rate reaches your target.</string>
+    <string name="alert_once">One time</string>
+    <string name="alert_repeats">Repeats</string>
+    <string name="alert_delete">Delete</string>
 </resources>

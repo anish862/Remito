@@ -1,3 +1,31 @@
 <resources>
-    <string name="profile_title">Profile</string>
+    <string name="profile_title">Profile &amp; settings</string>
+    <string name="profile_loading">Loading profile…</string>
+    <string name="default_corridor">Default corridor</string>
+    <string name="language">Language</string>
+    <string name="arabic_phase_two">Arabic (planned)</string>
+    <string name="notification_preferences">Notification preferences</string>
+    <string name="rate_alert_notifications">Rate alerts</string>
+    <string name="daily_summary_notifications">Daily summary</string>
+    <string name="news_notifications">News</string>
+    <string name="offer_notifications">Offers</string>
+    <string name="quiet_hours_start">Quiet hours start (UTC)</string>
+    <string name="quiet_hours_end">Quiet hours end (UTC)</string>
+    <string name="quiet_hours_help">24-hour HH:mm. Leave both empty to disable quiet hours.</string>
+    <string name="marketing_consent">Allow marketing messages</string>
+    <string name="enable_notifications">Set up push notifications</string>
+    <string name="notification_permission_title">Allow notifications?</string>
+    <string name="notification_permission_rationale">Rate alerts and important account updates can be sent as notifications. You can change this permission at any time in system settings.</string>
+    <string name="notification_permission_granted">Notification permission granted.</string>
+    <string name="notification_permission_denied">Notifications are disabled. You can allow them in app settings.</string>
+    <string name="notification_permission_automatic">Notification permission is controlled by Android settings on this version.</string>
+    <string name="open_notification_settings">Open app notification settings</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="terms_of_service">Terms of service</string>
+    <string name="legal_url_not_configured">Legal document URLs are not configured for this build.</string>
+    <string name="delete_account">Delete account</string>
+    <string name="delete_account_confirmation">This permanently deletes your account data and revokes active sessions. This cannot be undone.</string>
+    <string name="continue_label">Continue</string>
+    <string name="cancel">Cancel</string>
+    <string name="logout">Log out</string>
 </resources>

@@ -80,12 +80,33 @@ interface RateDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertFavourite(favourite: FavouriteEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFavourites(favourites: List<FavouriteEntity>)
+
     @Query("DELETE FROM favourites WHERE targetId = :targetId")
     suspend fun removeFavourite(targetId: String)
+
+    @Query("DELETE FROM favourites")
+    suspend fun clearFavourites()
 
     @Query("SELECT * FROM alerts ORDER BY id")
     fun observeAlerts(): Flow<List<AlertEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAlerts(alerts: List<AlertEntity>)
+
+    @Query("DELETE FROM alerts WHERE id = :id")
+    suspend fun deleteAlert(id: String)
+
+    @Query("DELETE FROM alerts")
+    suspend fun clearAlerts()
+
+    @Query("SELECT * FROM cached_news ORDER BY publishedAt DESC")
+    fun observeNews(): Flow<List<CachedNewsEntity>>
+
+    @Query("SELECT * FROM cached_news WHERE slug = :slug")
+    suspend fun getNews(slug: String): CachedNewsEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertNews(items: List<CachedNewsEntity>)
 }

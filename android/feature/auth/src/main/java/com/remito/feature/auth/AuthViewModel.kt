@@ -148,4 +148,9 @@ class AuthViewModel
                 }
             }
         }
+
+        fun finishDeletedSession() {
+            tokenStore.clear()
+            _uiState.value = AuthUiState()
+        }
     }

@@ -2,9 +2,12 @@ package com.remito.app
 
 import android.content.Context
 import androidx.room.Room
+import com.remito.core.common.UserSettings
+import com.remito.core.common.UserSettingsStore
 import com.remito.core.database.RateDao
 import com.remito.core.database.RemitoDatabase
 import com.remito.core.network.EncryptedTokenStore
+import com.remito.core.network.EngagementRepository
 import com.remito.core.network.NetworkClient
 import com.remito.core.network.RatesRepository
 import com.remito.core.network.RemitoApi
@@ -24,12 +27,19 @@ import javax.inject.Singleton
 object AndroidCoreModule {
     @Provides
     @Singleton
+    fun userSettings(
+        @ApplicationContext context: Context,
+    ): UserSettings = UserSettingsStore(context)
+
+    @Provides
+    @Singleton
     fun database(
         @ApplicationContext context: Context,
     ): RemitoDatabase =
         Room
             .databaseBuilder(context, RemitoDatabase::class.java, "remito.db")
             .addMigrations(RemitoDatabase.MIGRATION_1_2)
+            .addMigrations(RemitoDatabase.MIGRATION_2_3)
             .build()
 
     @Provides
@@ -66,6 +76,13 @@ object AndroidCoreModule {
         api: RemitoApi,
         rateDao: RateDao,
     ): RatesRepository = RatesRepository(api, rateDao)
+
+    @Provides
+    @Singleton
+    fun engagementRepository(
+        api: RemitoApi,
+        rateDao: RateDao,
+    ): EngagementRepository = EngagementRepository(api, rateDao)
 
     @Provides
     @Singleton

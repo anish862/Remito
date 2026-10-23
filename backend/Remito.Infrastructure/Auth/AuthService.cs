@@ -442,6 +442,36 @@ public sealed class AuthService(
         return new DeviceRegistrationResult(existing.Id, existing.Platform, existing.CreatedAt);
     }
 
+    public async Task<IReadOnlyList<DeviceRegistrationResult>> ListDevicesAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureActiveUserAsync(userId, cancellationToken);
+        return await dbContext.Devices.AsNoTracking()
+            .Where(device => device.UserId == userId)
+            .OrderBy(device => device.CreatedAt)
+            .Select(device => new DeviceRegistrationResult(device.Id, device.Platform, device.CreatedAt))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task RemoveDeviceAsync(
+        Guid userId,
+        Guid deviceId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureActiveUserAsync(userId, cancellationToken);
+        var device = await dbContext.Devices.SingleOrDefaultAsync(
+            item => item.Id == deviceId && item.UserId == userId,
+            cancellationToken);
+        if (device is null)
+        {
+            throw NotFound();
+        }
+
+        dbContext.Devices.Remove(device);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task EnsureRateAllowedAsync(
         string scope,
         string subjectHash,

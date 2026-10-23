@@ -23,6 +23,25 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        fun configuredValue(name: String): String =
+            providers
+                .gradleProperty(name)
+                .orElse(providers.environmentVariable(name))
+                .orElse("")
+                .get()
+        val firebaseAppId = configuredValue("REMITO_FIREBASE_APP_ID")
+        val firebaseApiKey = configuredValue("REMITO_FIREBASE_API_KEY")
+        val firebaseProjectId = configuredValue("REMITO_FIREBASE_PROJECT_ID")
+        val firebaseSenderId = configuredValue("REMITO_FIREBASE_SENDER_ID")
+        val privacyPolicyUrl = configuredValue("REMITO_PRIVACY_POLICY_URL")
+        val termsUrl = configuredValue("REMITO_TERMS_URL")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"$firebaseAppId\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"$firebaseSenderId\"")
+        buildConfigField("String", "PRIVACY_POLICY_URL", "\"$privacyPolicyUrl\"")
+        buildConfigField("String", "TERMS_URL", "\"$termsUrl\"")
     }
 
     flavorDimensions += "environment"
@@ -87,6 +106,8 @@ dependencies {
     implementation(project(":feature:auth"))
     implementation(project(":feature:alerts"))
     implementation(project(":feature:profile"))
+    implementation(project(":feature:news"))
+    implementation(project(":feature:favourites"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -97,6 +118,8 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.room.runtime)
+    implementation(libs.work.runtime)
+    implementation(libs.firebase.messaging)
     implementation(libs.retrofit)
     kapt(libs.hilt.compiler)
     debugImplementation(libs.compose.ui.tooling)

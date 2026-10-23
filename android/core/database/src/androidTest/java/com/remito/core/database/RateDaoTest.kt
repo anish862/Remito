@@ -2,8 +2,11 @@ package com.remito.core.database
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.testing.MigrationTestHelper
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -73,4 +76,45 @@ class RateDaoTest {
             assertEquals(true, offers.single().isStale)
             assertEquals(true, offers.single().isBestRate)
         }
+
+    @Test
+    fun versionTwoCacheMigratesAlertsFavouritesAndNews() {
+        val helper =
+            MigrationTestHelper(
+                InstrumentationRegistry.getInstrumentation(),
+                RemitoDatabase::class.java,
+                emptyList(),
+                FrameworkSQLiteOpenHelperFactory(),
+            )
+        helper.createDatabase(MIGRATION_DATABASE, 2).apply {
+            execSQL("INSERT INTO favourites (targetId, type) VALUES ('INR', 'currency')")
+            execSQL(
+                "INSERT INTO alerts (id, pair, direction, target, isActive) " +
+                    "VALUES ('alert-1', 'OMR/INR', 'above', '220', 1)",
+            )
+            close()
+        }
+
+        helper
+            .runMigrationsAndValidate(MIGRATION_DATABASE, 3, true, RemitoDatabase.MIGRATION_2_3)
+            .use { migrated ->
+                migrated.query("SELECT remoteId FROM favourites WHERE targetId = 'INR'").use { cursor ->
+                    assertEquals(true, cursor.moveToFirst())
+                    assertEquals(true, cursor.isNull(0))
+                }
+                migrated.query("SELECT isOneTime, dailySummary FROM alerts WHERE id = 'alert-1'").use { cursor ->
+                    assertEquals(true, cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                    assertEquals(0, cursor.getInt(1))
+                }
+                migrated.query("SELECT COUNT(*) FROM cached_news").use { cursor ->
+                    assertEquals(true, cursor.moveToFirst())
+                    assertEquals(0, cursor.getInt(0))
+                }
+            }
+    }
+
+    private companion object {
+        const val MIGRATION_DATABASE = "remito-migration-2-3.db"
+    }
 }
