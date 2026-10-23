@@ -60,6 +60,24 @@ public sealed class EngagementFlowTests
         Assert.Empty(fixture.Context.RedirectEvents);
     }
 
+    [Theory]
+    [InlineData("https://gateway.exchange.test/send?click_id=forged")]
+    [InlineData("https://gateway.exchange.test/send?email=user%40example.test")]
+    [InlineData("https://gateway.exchange.test/send?access_token=secret")]
+    public async Task Redirect_rejects_configured_urls_with_attribution_or_sensitive_query_keys(string gatewayUrl)
+    {
+        await using var fixture = await CreateFixtureAsync(gatewayUrl);
+
+        var exception = await Assert.ThrowsAsync<EngagementOperationException>(
+            () => fixture.RedirectService().CreateAsync(
+                new CreateRedirectRequest(ExchangeId, "OMR-INR", 10m),
+                null,
+                default));
+
+        Assert.Equal(409, exception.StatusCode);
+        Assert.Empty(fixture.Context.RedirectEvents);
+    }
+
     [Fact]
     public async Task Signed_postback_is_idempotent_and_creates_one_commission_ledger_entry()
     {

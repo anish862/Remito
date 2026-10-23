@@ -106,7 +106,8 @@ public sealed class RedirectService(
             || (!requireHttps
                 && (uri.Scheme is "http" or "javascript" or "data" or "file" or "ftp"))
             || !string.IsNullOrEmpty(uri.UserInfo)
-            || !allowedHosts.Contains(uri.IdnHost))
+            || !allowedHosts.Contains(uri.IdnHost)
+            || HasUnsafeQueryKey(uri.Query))
         {
             throw new EngagementOperationException(
                 (int)HttpStatusCode.Conflict,
@@ -127,6 +128,29 @@ public sealed class RedirectService(
         query.Add("utm_campaign=exchange_redirect");
         builder.Query = string.Join("&", query);
         return builder.Uri.AbsoluteUri;
+    }
+
+    private static bool HasUnsafeQueryKey(string query)
+    {
+        foreach (var parameter in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = parameter.IndexOf('=');
+            var key = separator < 0 ? parameter : parameter[..separator];
+            key = Uri.UnescapeDataString(key.Replace('+', ' '));
+            if (key.Equals("click_id", StringComparison.OrdinalIgnoreCase)
+                || key.Equals("click_sig", StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith("utm_", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("name", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("phone", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("mobile", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("email", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("token", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static HashSet<string> ParseAllowedHosts(string? allowedHosts) =>
