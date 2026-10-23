@@ -6,7 +6,12 @@ namespace Remito.Application.Engagement;
 public sealed record CreateRedirectRequest(Guid ExchangeId, string Corridor, decimal Amount, bool AppInstalledHint = false);
 
 /// <summary>Safe redirect URLs and the generated attribution identifier.</summary>
-public sealed record RedirectResponse(string DestinationUrl, string? FallbackUrl, string ClickId, string DisclosureText);
+public sealed record RedirectResponse(
+    string DestinationUrl,
+    string? FallbackUrl,
+    string ClickId,
+    string DisclosureText,
+    string? GatewayUrl = null);
 
 /// <summary>Partner-reported conversion payload.</summary>
 public sealed record PartnerPostbackRequest(

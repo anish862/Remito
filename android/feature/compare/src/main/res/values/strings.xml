@@ -1,3 +1,37 @@
 <resources>
-    <string name="compare_title">Compare</string>
+    <string name="compare_title">Compare exchanges</string>
+    <string name="compare_amount">Amount to send</string>
+    <string name="compare_search">Search exchanges</string>
+    <string name="compare_best_amount">Best amount</string>
+    <string name="compare_best_rate">Best rate</string>
+    <string name="compare_has_app">Has app</string>
+    <string name="compare_rate">Rate: 1 %1$s = %2$s %3$s</string>
+    <string name="compare_fee">Fee</string>
+    <string name="compare_fee_provided">Fee: %1$s %2$s</string>
+    <string name="compare_fee_not_provided">Fee not provided</string>
+    <string name="compare_received">You receive</string>
+    <string name="compare_received_amount">%1$s %2$s</string>
+    <string name="compare_updated">Updated %1$s</string>
+    <string name="compare_best_rate_badge">Best rate</string>
+    <string name="compare_has_app_chip">Has app</string>
+    <string name="compare_choose">Choose</string>
+    <string name="compare_details">Details</string>
+    <string name="compare_no_exchanges">No exchanges are available for this corridor yet.</string>
+    <string name="compare_invalid_amount">Enter an amount greater than zero.</string>
+    <string name="compare_stale_offer">This exchange rate is stale.</string>
+    <string name="compare_disclaimer">Remito does not process payments. Transactions are completed on the chosen licensed exchange.</string>
+    <string name="compare_fee_breakdown">Fee breakdown</string>
+    <string name="compare_confirmation_title">Continue to exchange?</string>
+    <string name="compare_confirmation_message">You are leaving Remito to complete payment with %1$s. Remito does not process payments.</string>
+    <string name="compare_cancel">Cancel</string>
+    <string name="compare_continue">Continue</string>
+    <string name="compare_redirect_failed">Could not open the exchange. Check your connection and try again.</string>
+    <string name="compare_retry_redirect">Try again</string>
+    <string name="compare_load_failed">Could not load exchanges. Please try again.</string>
+    <string name="compare_best_amount_description">Sort exchanges by amount received</string>
+    <string name="compare_best_rate_description">Sort exchanges by rate</string>
+    <string name="compare_has_app_description">Show exchanges with an app</string>
+    <string name="compare_exchange_logo">Logo for %1$s</string>
+    <string name="compare_amount_received_for">For %1$s %2$s, you receive %3$s %4$s</string>
+    <string name="compare_to">to</string>
 </resources>

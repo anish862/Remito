@@ -9,6 +9,9 @@ import com.remito.core.network.NetworkClient
 import com.remito.core.network.RatesRepository
 import com.remito.core.network.RemitoApi
 import com.remito.core.network.TokenStore
+import com.remito.feature.compare.ComparisonRepository
+import com.remito.feature.compare.RedirectAnalytics
+import com.remito.feature.compare.RedirectEvent
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +26,11 @@ object AndroidCoreModule {
     @Singleton
     fun database(
         @ApplicationContext context: Context,
-    ): RemitoDatabase = Room.databaseBuilder(context, RemitoDatabase::class.java, "remito.db").build()
+    ): RemitoDatabase =
+        Room
+            .databaseBuilder(context, RemitoDatabase::class.java, "remito.db")
+            .addMigrations(RemitoDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides
     fun rateDao(database: RemitoDatabase): RateDao = database.rateDao()
@@ -59,4 +66,26 @@ object AndroidCoreModule {
         api: RemitoApi,
         rateDao: RateDao,
     ): RatesRepository = RatesRepository(api, rateDao)
+
+    @Provides
+    @Singleton
+    fun comparisonRepository(
+        api: RemitoApi,
+        rateDao: RateDao,
+    ): ComparisonRepository = ComparisonRepository(api, rateDao)
+
+    @Provides
+    @Singleton
+    fun redirectAnalytics(): RedirectAnalytics =
+        RedirectAnalytics { event ->
+            if (BuildConfig.DEBUG) {
+                android.util.Log.d(
+                    "RemitoAnalytics",
+                    when (event) {
+                        RedirectEvent.STARTED -> "redirect_started"
+                        RedirectEvent.RETURNED -> "redirect_returned"
+                    },
+                )
+            }
+        }
 }

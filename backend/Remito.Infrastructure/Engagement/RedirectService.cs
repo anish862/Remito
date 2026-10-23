@@ -86,7 +86,7 @@ public sealed class RedirectService(
         });
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new RedirectResponse(destinationUrl, fallbackUrl, clickId, Disclosure);
+        return new RedirectResponse(destinationUrl, fallbackUrl, clickId, Disclosure, gatewayUrl);
     }
 
     private static string? BuildUrl(

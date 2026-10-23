@@ -114,19 +114,22 @@ interface RemitoApi {
     ): Response<ExchangeDto>
 
     @GET("compare")
+    @Suppress("LongParameterList")
     suspend fun compare(
         @Query("from") from: String,
         @Query("to") to: String,
         @Query("amount") amount: BigDecimal,
+        @Query("sort") sort: String? = null,
+        @Query("hasApp") hasApp: Boolean? = null,
+        @Query("search") search: String? = null,
         @Query("page") page: Int = 1,
         @Query("pageSize") pageSize: Int = 20,
-    ): Response<PagedResponse<ExchangeOfferDto>>
+    ): Response<ExchangeComparisonResponseDto>
 
-    @POST("redirect/{exchangeId}")
+    @POST("redirect")
     suspend fun redirect(
-        @Path("exchangeId") exchangeId: String,
         @Body request: RedirectRequest,
-    ): Response<Unit>
+    ): Response<RedirectResponseDto>
 
     @GET("favourites")
     suspend fun favourites(
