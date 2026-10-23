@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -35,6 +36,40 @@ interface RateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertExchanges(exchanges: List<ExchangeEntity>)
+
+    @Query(
+        "SELECT * FROM comparison_offers WHERE corridor = :corridor AND amount = :amount " +
+            "ORDER BY isSponsored DESC, amountReceived DESC",
+    )
+    fun observeComparisonOffers(
+        corridor: String,
+        amount: String,
+    ): Flow<List<ComparisonOfferEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertComparisonOffers(offers: List<ComparisonOfferEntity>)
+
+    @Transaction
+    suspend fun replaceComparisonOffers(
+        corridor: String,
+        amount: String,
+        offers: List<ComparisonOfferEntity>,
+    ) {
+        clearComparisonOffers(corridor, amount)
+        if (offers.isNotEmpty()) upsertComparisonOffers(offers)
+    }
+
+    @Query("DELETE FROM comparison_offers WHERE corridor = :corridor AND amount = :amount")
+    suspend fun clearComparisonOffers(
+        corridor: String,
+        amount: String,
+    )
+
+    @Query("UPDATE comparison_offers SET isStale = 1 WHERE corridor = :corridor AND amount = :amount")
+    suspend fun markComparisonOffersStale(
+        corridor: String,
+        amount: String,
+    )
 
     @Query("SELECT * FROM favourites ORDER BY targetId")
     fun observeFavourites(): Flow<List<FavouriteEntity>>

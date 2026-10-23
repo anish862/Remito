@@ -275,18 +275,54 @@ data class ExchangeFeeDto(
 
 @JsonClass(generateAdapter = false)
 data class ExchangeOfferDto(
-    val exchange: ExchangeDto,
+    val id: String,
+    val name: String,
+    val logo: String? = null,
     val rate: BigDecimal,
-    val fee: ExchangeFeeDto? = null,
-    val amountReceived: BigDecimal,
-    val fetchedAt: String,
+    val fee: BigDecimal? = null,
+    val amountReceived: BigDecimal?,
+    val feeDisclosure: String,
+    val lastUpdated: String,
     val isStale: Boolean,
+    val hasApp: Boolean,
+    val isSponsored: Boolean,
+    val isBestRate: Boolean,
+)
+
+@JsonClass(generateAdapter = false)
+data class ExchangeComparisonResponseDto(
+    val from: String,
+    val to: String,
+    val amount: BigDecimal,
+    val exchanges: List<ExchangeOfferDto>,
+    val sponsoredSlot: SponsoredExchangeSlotDto? = null,
+    val disclaimer: String,
+    val page: Int,
+    val pageSize: Int,
+    val totalCount: Int,
+)
+
+@JsonClass(generateAdapter = false)
+data class SponsoredExchangeSlotDto(
+    val label: String,
+    val exchanges: List<ExchangeOfferDto>,
 )
 
 @JsonClass(generateAdapter = false)
 data class RedirectRequest(
-    val corridorId: String,
+    val exchangeId: String,
+    val corridor: String,
     val amount: BigDecimal,
+    val appInstalledHint: Boolean,
+)
+
+@JsonClass(generateAdapter = false)
+data class RedirectResponseDto(
+    val destinationUrl: String,
+    val fallbackUrl: String? = null,
+    val gatewayUrl: String? = null,
+    val clickId: String,
+    val disclosureText: String,
 )
 
 enum class FavouriteType {

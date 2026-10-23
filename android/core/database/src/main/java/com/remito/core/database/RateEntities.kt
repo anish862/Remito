@@ -28,6 +28,24 @@ data class ExchangeEntity(
     val tier: String,
 )
 
+@Entity(tableName = "comparison_offers", primaryKeys = ["corridor", "amount", "exchangeId"])
+data class ComparisonOfferEntity(
+    val corridor: String,
+    val amount: String,
+    val exchangeId: String,
+    val name: String,
+    val logo: String?,
+    val rate: String,
+    val fee: String?,
+    val amountReceived: String?,
+    val feeDisclosure: String,
+    val lastUpdated: String,
+    val isStale: Boolean,
+    val hasApp: Boolean,
+    val isSponsored: Boolean,
+    val isBestRate: Boolean,
+)
+
 @Entity(tableName = "favourites")
 data class FavouriteEntity(
     @PrimaryKey val targetId: String,

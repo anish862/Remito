@@ -37,6 +37,7 @@ public sealed class EngagementFlowTests
         Assert.Contains("click_sig=", response.DestinationUrl, StringComparison.Ordinal);
         Assert.Contains("utm_source=remito", response.DestinationUrl, StringComparison.Ordinal);
         Assert.Contains("store.exchange.test", response.FallbackUrl, StringComparison.Ordinal);
+        Assert.Contains("gateway.exchange.test", response.GatewayUrl!, StringComparison.Ordinal);
         Assert.DoesNotContain(user.Email!, response.DestinationUrl, StringComparison.Ordinal);
         Assert.DoesNotContain(user.PhoneNumber!, response.DestinationUrl, StringComparison.Ordinal);
         Assert.Single(fixture.Context.RedirectEvents);
