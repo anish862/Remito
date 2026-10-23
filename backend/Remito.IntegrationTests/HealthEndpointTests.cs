@@ -35,12 +35,20 @@ public sealed class HealthEndpointTests : IAsyncLifetime
         Assert.True(paths.TryGetProperty("/api/v1/rates/latest", out var latest));
         Assert.True(paths.TryGetProperty("/api/v1/rates/history", out var history));
         Assert.True(paths.TryGetProperty("/api/v1/convert", out var convert));
+        Assert.True(paths.TryGetProperty("/api/v1/exchanges", out var exchanges));
+        Assert.True(paths.TryGetProperty("/api/v1/compare", out var compare));
         Assert.True(latest.TryGetProperty("get", out _));
         Assert.True(history.TryGetProperty("get", out _));
         Assert.True(convert.TryGetProperty("post", out var convertPost));
         Assert.True(convertPost.TryGetProperty("requestBody", out _));
+        Assert.True(exchanges.TryGetProperty("get", out _));
+        Assert.True(compare.TryGetProperty("get", out _));
         Assert.True(document.RootElement.GetProperty("components")
             .GetProperty("schemas").TryGetProperty("CurrencyConversionResponse", out _));
+        Assert.True(document.RootElement.GetProperty("components")
+            .GetProperty("schemas").TryGetProperty("ExchangeOffer", out _));
+        Assert.True(document.RootElement.GetProperty("components")
+            .GetProperty("schemas").TryGetProperty("ExchangeComparisonResponse", out _));
         Assert.True(document.RootElement.GetProperty("components")
             .GetProperty("securitySchemes").TryGetProperty("Bearer", out _));
     }

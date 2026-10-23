@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Remito.Application.Auth;
 using Remito.Application.Rates;
+using Remito.Application.Exchanges;
 
 namespace Remito.Api.Errors;
 
@@ -24,6 +25,26 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                         ? "Rate not found"
                         : "Invalid rate request",
                     Detail = rateException.Message,
+                    Instance = httpContext.Request.Path
+                },
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken: cancellationToken);
+            return true;
+        }
+
+        if (exception is ExchangeComparisonException comparisonException)
+        {
+            httpContext.Response.StatusCode = comparisonException.StatusCode;
+            httpContext.Response.ContentType = "application/problem+json";
+            await httpContext.Response.WriteAsJsonAsync(
+                new ProblemDetails
+                {
+                    Status = comparisonException.StatusCode,
+                    Title = comparisonException.StatusCode == StatusCodes.Status404NotFound
+                        ? "Exchange corridor not found"
+                        : "Invalid exchange comparison request",
+                    Detail = comparisonException.Message,
                     Instance = httpContext.Request.Path
                 },
                 options: null,

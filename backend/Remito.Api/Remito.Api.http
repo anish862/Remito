@@ -116,13 +116,13 @@ Content-Type: application/json
 { "amount": 10, "from": "OMR", "to": "INR" }
 
 ### List exchanges
-GET {{baseUrl}}/exchanges?page=1&pageSize=20
+GET {{baseUrl}}/exchanges?from=OMR&to=INR&amount=10&sort=best&hasApp=true&search=exchange&page=1&pageSize=20
 
 ### Get exchange
 GET {{baseUrl}}/exchanges/example-exchange
 
 ### Compare exchange offers
-GET {{baseUrl}}/compare?from=OMR&to=INR&amount=10&page=1&pageSize=20
+GET {{baseUrl}}/compare?from=OMR&to=INR&amount=10&sort=best&page=1&pageSize=20
 
 ### Record referral and redirect
 POST {{baseUrl}}/redirect/{{exchangeId}}

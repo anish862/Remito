@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Remito.Application.Auth;
 using Remito.Application.Abstractions;
 using Remito.Application.Rates;
+using Remito.Application.Exchanges;
 using Remito.Infrastructure.Auth;
 using Remito.Infrastructure.Caching;
 using Remito.Infrastructure.Persistence;
@@ -26,6 +27,7 @@ public static class DependencyInjection
         {
             services.AddDbContext<RemitoDbContext>(options => options.UseSqlServer(databaseConnection));
             services.AddScoped<IRateQueryService, RateQueryService>();
+            services.AddScoped<IExchangeComparisonService, ExchangeComparisonService>();
         }
 
         if (configuration.GetValue<bool?>("Redis:Enabled") != false)
