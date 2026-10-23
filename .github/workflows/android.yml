@@ -69,10 +69,22 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           REMITO_CERTIFICATE_PINS: ${{ vars.REMITO_CERTIFICATE_PINS }}
-        run: ./gradlew --no-daemon -PREMITO_CERTIFICATE_PINS="$REMITO_CERTIFICATE_PINS" bundleProdRelease
+        run: |
+          version_name="${GITHUB_REF_NAME#v}"
+          if [[ ! "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]]; then
+            echo "Release tag must be vMAJOR.MINOR.PATCH with an optional prerelease suffix." >&2
+            exit 1
+          fi
+          ./gradlew --no-daemon \
+            -PREMITO_CERTIFICATE_PINS="$REMITO_CERTIFICATE_PINS" \
+            -PREMITO_VERSION_CODE="${GITHUB_RUN_NUMBER}" \
+            -PREMITO_VERSION_NAME="$version_name" \
+            bundleProdRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: remito-release-aab
-          path: android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+          name: remito-release-${{ github.ref_name }}
+          path: |
+            android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
+            android/app/build/outputs/mapping/prodRelease/mapping.txt
           if-no-files-found: error
           retention-days: 90
