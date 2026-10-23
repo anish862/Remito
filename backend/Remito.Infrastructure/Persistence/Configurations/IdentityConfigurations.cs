@@ -13,6 +13,15 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(user => user.Email).HasMaxLength(320);
         builder.Property(user => user.PhoneNumber).HasMaxLength(16);
         builder.Property(user => user.DisplayName).HasMaxLength(200);
+        builder.Property(user => user.RateAlertsEnabled).HasDefaultValue(true);
+        builder.Property(user => user.DailySummaryEnabled).HasDefaultValue(false);
+        builder.ToTable(table =>
+        {
+            table.HasCheckConstraint("CK_Users_QuietHoursStartMinute",
+                "[QuietHoursStartMinute] IS NULL OR [QuietHoursStartMinute] BETWEEN 0 AND 1439");
+            table.HasCheckConstraint("CK_Users_QuietHoursEndMinute",
+                "[QuietHoursEndMinute] IS NULL OR [QuietHoursEndMinute] BETWEEN 0 AND 1439");
+        });
         builder.HasIndex(user => user.ExternalId).IsUnique();
         builder.HasIndex(user => user.Email).IsUnique().HasFilter("[Email] IS NOT NULL");
         builder.HasIndex(user => user.PhoneNumber).IsUnique().HasFilter("[PhoneNumber] IS NOT NULL");

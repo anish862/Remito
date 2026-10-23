@@ -120,6 +120,11 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("DailySummary")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Direction")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -127,6 +132,16 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsArmed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsOneTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset?>("LastTriggeredAt")
                         .HasColumnType("datetimeoffset");
@@ -406,9 +421,24 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AllowedRedirectHosts")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
                     b.Property<string>("AppDeepLink")
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
+
+                    b.Property<string>("CommissionCurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("nchar(3)")
+                        .IsFixedLength();
+
+                    b.Property<decimal>("CommissionFlatAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0.50m);
 
                     b.Property<string>("GatewayUrl")
                         .HasMaxLength(2048)
@@ -450,6 +480,8 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CommissionCurrencyCode");
+
                     b.HasIndex("Slug")
                         .IsUnique();
 
@@ -461,6 +493,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000001"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 01",
@@ -471,6 +504,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000002"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 02",
@@ -481,6 +515,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000003"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 03",
@@ -491,6 +526,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000004"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 04",
@@ -501,6 +537,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000005"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 05",
@@ -511,6 +548,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000006"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 06",
@@ -521,6 +559,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000007"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 07",
@@ -531,6 +570,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000008"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 08",
@@ -541,6 +581,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000009"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 09",
@@ -551,6 +592,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("10000000-0000-0000-0000-000000000010"),
+                            CommissionFlatAmount = 0.50m,
                             HasApp = false,
                             IsPlaceholder = true,
                             Name = "Placeholder Exchange 10",
@@ -638,6 +680,10 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("TargetCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<Guid>("TargetId")
                         .HasColumnType("uniqueidentifier");
 
@@ -651,7 +697,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "Type", "TargetId")
+                    b.HasIndex("UserId", "Type", "TargetId", "TargetCode")
                         .IsUnique();
 
                     b.ToTable("Favourites");
@@ -840,6 +886,91 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.ToTable("OtpChallenges");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.PartnerReconciliationIssue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ClickId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ExchangeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExternalRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsResolved")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("IssueType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExchangeId", "ExternalRef")
+                        .IsUnique();
+
+                    b.ToTable("PartnerReconciliationIssues");
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.PartnerReportRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ClickId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Commission")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTimeOffset>("ConvertedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nchar(3)")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("ExchangeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExternalRef")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CurrencyCode");
+
+                    b.HasIndex("ExchangeId", "ConvertedAt");
+
+                    b.HasIndex("ExchangeId", "ExternalRef")
+                        .IsUnique();
+
+                    b.ToTable("PartnerReportRows");
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.RateHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1012,6 +1143,9 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("ConvertedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid>("ExchangeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ExternalRef")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1026,7 +1160,7 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClickId")
                         .IsUnique();
 
-                    b.HasIndex("ExternalRef")
+                    b.HasIndex("ExchangeId", "ExternalRef")
                         .IsUnique()
                         .HasFilter("[ExternalRef] IS NOT NULL");
 
@@ -1086,6 +1220,11 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<bool>("DailySummaryEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1102,9 +1241,23 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateTimeOffset?>("LastAlertSummaryAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
+
+                    b.Property<int?>("QuietHoursEndMinute")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("QuietHoursStartMinute")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RateAlertsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.HasKey("Id");
 
@@ -1121,7 +1274,12 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("[PhoneNumber] IS NOT NULL");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", t =>
+                        {
+                            t.HasCheckConstraint("CK_Users_QuietHoursEndMinute", "[QuietHoursEndMinute] IS NULL OR [QuietHoursEndMinute] BETWEEN 0 AND 1439");
+
+                            t.HasCheckConstraint("CK_Users_QuietHoursStartMinute", "[QuietHoursStartMinute] IS NULL OR [QuietHoursStartMinute] BETWEEN 0 AND 1439");
+                        });
                 });
 
             modelBuilder.Entity("Remito.Domain.Entities.UserConsent", b =>
@@ -1262,6 +1420,14 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.Exchange", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CommissionCurrencyCode")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.ExchangeFee", b =>
                 {
                     b.HasOne("Remito.Domain.Entities.Corridor", "Corridor")
@@ -1331,6 +1497,30 @@ namespace Remito.Infrastructure.Persistence.Migrations
                     b.Navigation("Source");
                 });
 
+            modelBuilder.Entity("Remito.Domain.Entities.PartnerReconciliationIssue", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.Exchange", null)
+                        .WithMany()
+                        .HasForeignKey("ExchangeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Remito.Domain.Entities.PartnerReportRow", b =>
+                {
+                    b.HasOne("Remito.Domain.Entities.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CurrencyCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Remito.Domain.Entities.Exchange", null)
+                        .WithMany()
+                        .HasForeignKey("ExchangeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Remito.Domain.Entities.RateQuarantine", b =>
                 {
                     b.HasOne("Remito.Domain.Entities.RateSource", null)
@@ -1372,6 +1562,12 @@ namespace Remito.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ClickId")
                         .HasPrincipalKey("ClickId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Remito.Domain.Entities.Exchange", null)
+                        .WithMany()
+                        .HasForeignKey("ExchangeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

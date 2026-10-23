@@ -26,6 +26,8 @@ public sealed class RemitoDbContext(DbContextOptions<RemitoDbContext> options) :
     public DbSet<RedirectEvent> RedirectEvents => Set<RedirectEvent>();
     public DbSet<ReferralConversion> ReferralConversions => Set<ReferralConversion>();
     public DbSet<CommissionLedger> CommissionLedgers => Set<CommissionLedger>();
+    public DbSet<PartnerReconciliationIssue> PartnerReconciliationIssues => Set<PartnerReconciliationIssue>();
+    public DbSet<PartnerReportRow> PartnerReportRows => Set<PartnerReportRow>();
     public DbSet<AdCampaign> AdCampaigns => Set<AdCampaign>();
     public DbSet<AdCreative> AdCreatives => Set<AdCreative>();
     public DbSet<AdImpression> AdImpressions => Set<AdImpression>();

@@ -15,6 +15,7 @@ Remito is an Android app that lets users compare exchange rates from licensed ex
 - [Repository structure](#repository-structure)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
+- [Redirects, partners, and engagement](#redirects-partners-and-engagement)
 - [Testing](#testing)
 - [CI/CD and environments](#cicd-and-environments)
 - [Engineering standards](#engineering-standards)
@@ -105,6 +106,15 @@ dotnet user-secrets set --project backend/Remito.Api "Redis:ConnectionString" "l
 
 The API requires SQL Server configuration at startup. OTP authentication additionally requires Redis; in Development, the console sender reports delivery without writing OTPs or destinations to logs. Configure a real SMS/email sender outside local development.
 
+For the worker, also set its SQL connection and Redis endpoint. Redirect creation needs a local signing key; use a different random value in every environment. Push uses a development console sender when Firebase is not configured.
+
+```bash
+dotnet user-secrets set --project backend/Remito.Workers "ConnectionStrings:Default" \
+  "Server=localhost,1433;Database=Remito;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+dotnet user-secrets set --project backend/Remito.Workers "Redis:ConnectionString" "localhost:6379"
+dotnet user-secrets set --project backend/Remito.Api "Redirect:SigningKey" "replace-with-a-random-local-key-at-least-32-bytes"
+```
+
 ### Rates pipeline
 
 The worker registers a one-minute Hangfire rate-ingestion job and an hourly history roll-up job when `ConnectionStrings:Default` is configured. Apply EF migrations before starting it; run the Development worker locally with `dotnet run --project backend/Remito.Workers` to ingest the recorded fixture into local SQL and Redis (or the development in-memory cache when Redis is not configured). `Rates:Market:Endpoint` enables the licensed FX adapter; `Rates:Exchanges:Feeds` accepts one HTTPS feed definition per exchange with `Name`, `SourceId`, `Endpoint`, `Strategy` (`json`, `csv`, or `html`), `StalenessMinutes`, and optional request `Headers`. JSON and table/CSV inputs use `pair`, `bid`, `ask`, and optional `mid` fields/columns. Supply `Rates:Market:ApiKey` and exchange credentials through the host configuration provider backed by Key Vault; the market adapter also accepts the existing `RateProviders:ApiKey` setting. Use worker user-secrets locally. Credentials are never logged.
@@ -125,6 +135,18 @@ The audit reports missing pairs and above-threshold variance and exits non-zero 
 The API exposes `GET /api/v1/rates/latest?base=OMR&symbols=INR,AED`, `GET /api/v1/rates/history?pair=OMR-INR&range=1D`, and `POST /api/v1/convert` with `{"amount":10,"from":"OMR","to":"INR"}`. Latest rates use the aggregate Redis cache and fall back to SQL; stale values remain available with `isStale: true`. Latest responses include an ETag and a 15-second public cache lifetime. Conversion accepts positive amounts up to 1 trillion, rejects same-currency conversions, uses USD as the cross-rate pivot when needed, and rounds to the destination currency precision using midpoint-to-even (banker's) rounding.
 
 The exchange comparison API exposes `GET /api/v1/exchanges` and `GET /api/v1/compare?from=OMR&to=INR&amount=10`. The exchanges listing defaults to the OMR-INR corridor and 10 OMR; both endpoints accept `from`, `to`, `amount`, `sort=best|rate|name`, `hasApp`, `search`, `page`, and `pageSize` (maximum 100). Only active non-placeholder exchanges with a quote are returned; stale quotes remain visible with `isStale: true`. Fees are selected from the matching amount band and calculated as flat fee plus percentage fee (percentage expressed in percent units); fees are rounded to source-currency precision and amount received to destination-currency precision using midpoint-to-even. Offers with known fees rank by amount received, followed by rate; unknown fees are clearly disclosed and ranked by rate. Sponsored offers are returned in a separately labelled slot and do not receive any ranking or `isBestRate` advantage. Comparison results are cached for 60 seconds per corridor and exact amount. Responses include the payment disclaimer in metadata.
+
+### Redirects, partners, and engagement
+
+The redirect endpoint creates a referral click with `POST /api/v1/redirect` using `{ "exchangeId": "...", "corridor": "OMR-INR", "amount": 10, "appInstalledHint": false }`. The exchange must be active and its configured gateway, app, and store hosts must be in `AllowedRedirectHosts`; destinations are taken from exchange configuration, not from the request. The response contains the signed ClickId, destination, fallback, and disclosure. URLs contain no user identity or access token.
+
+Partners post conversions to `POST /api/v1/partners/{exchangeId}/postback`. Sign the exact raw request body as `HMAC-SHA256(secret, unixTimestamp + "." + body)` and send `X-Partner-Timestamp` and `X-Partner-Signature: sha256=<hex>`. The API accepts timestamps within five minutes, verifies the ClickId belongs to the exchange, and makes repeated `(exchangeId, externalRef)` postbacks idempotent. The default commission is a flat 0.50 in the configured commission currency (or corridor quote currency). The monthly report is `GET /api/v1/admin/exchanges/{exchangeId}/reports/monthly?year=2026&month=10`.
+
+Configure each exchange's `AppDeepLink`, `PlayStoreUrl`, `GatewayUrl`, and `AllowedRedirectHosts` through the controlled exchange provisioning process. The allow-list is a comma-separated set of exact host names, for example `app.example.com,pay.example.com`; do not include schemes, paths, wildcards, or user-controlled values. Provision `PartnerPostback:SecretsJson` as a JSON object keyed by exchange ID, with a unique high-entropy secret per partner. The worker can import partner CSV files when `PartnerReconciliation:ImportDirectory` points to a private directory. Files are limited to 10 MB, use `<exchange-guid>_...csv` names, and require `external_ref,click_id,converted_at,amount,commission,currency` columns. A daily Hangfire job records unmatched report rows and missing postbacks; monthly reports compare imported commissions with the ledger.
+
+Authenticated users can manage favourites at `GET|POST /api/v1/favourites` and `DELETE /api/v1/favourites/{id}` (up to 50, duplicate adds are idempotent), and rate alerts at `GET|POST /api/v1/alerts`, `PATCH|DELETE /api/v1/alerts/{id}`. The alert worker checks fresh Redis quotes each minute, notifies once per threshold crossing, and re-arms after the rate crosses back. Daily summaries run at 08:00 UTC. `GET|PATCH /api/v1/me/notification-preferences` controls alert/digest delivery and quiet-hour bounds in UTC minutes after midnight. Firebase Admin credentials enable production FCM; in Development the console sender is used. Invalid device tokens are pruned. Marketing notifications require marketing consent, and push data must not include personal information.
+
+The public news feed is `GET /api/v1/news?page=1&pageSize=20`; item detail is `GET /api/v1/news/{slug}`. Admin-curated list and save endpoints are under `/api/v1/admin/news`. Optional RSS/Atom import is enabled by `News:Rss:FeedUrl` (HTTPS only, redirects disabled, response capped at 2 MB and 25 entries) and runs daily. All routes are versioned under `/api/v1`; Swagger is available at `/swagger` in non-production environments.
 
 To measure local cached latest-rate latency, install [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) and run the Development API and rate worker as described below. The test warms the route under a 20-virtual-user load and fails if P95 reaches 200 ms:
 
@@ -167,6 +189,7 @@ The local worker applies recurring ingestion and history roll-up jobs. To check 
 
 ```bash
 DOTNET_ROLL_FORWARD=Major dotnet test backend/Remito.UnitTests --filter FullyQualifiedName~RateQueryServiceTests
+DOTNET_ROLL_FORWARD=Major dotnet test backend/Remito.UnitTests --filter FullyQualifiedName~EngagementFlowTests
 DOTNET_ROLL_FORWARD=Major dotnet test backend/Remito.IntegrationTests --filter FullyQualifiedName~Swagger_includes_passwordless_auth_and_bearer_security
 ```
 
@@ -178,6 +201,8 @@ Production is deployed to Azure App Service using the Bicep environment definiti
 2. Configure production SQL and Redis connection settings as Key Vault references, production `Rates:Market` and `Rates:Exchanges` provider settings, App Insights, and the production sender for SMS/email. Keep the Development fixture provider disabled.
 3. Run the database migration workflow with the designated migration identity and required DDL role, then deploy the API and worker using the protected production environment. Verify `/health`, `/swagger` in a non-production slot, latest-rate freshness, history, conversion, and App Insights rate metrics before the approved slot swap.
 4. Run `backend/scripts/rates-cache-load.js` against the production-like staging slot with `API_BASE_URL` set to that slot. Capture the k6 summary (especially P95), machine/load settings, and date in the release record. Do not treat a developer-local benchmark as a production performance guarantee.
+5. Before enabling referral traffic, provision the exchange's exact redirect host allow-list and app/store/gateway URLs through the controlled data-provisioning process. Store a unique HMAC secret per exchange in Key Vault-backed configuration (`PartnerPostback:SecretsJson`); never reuse the local/test secret. Configure a private partner CSV import directory and restrict its access to the worker identity. Configure Firebase Admin service-account JSON through Key Vault-backed settings if production push is enabled, and verify quiet hours and marketing consent behavior with production-like accounts.
+6. Verify redirect and partner callback signatures, monthly commission reports, reconciliation imports, push-token pruning, and news/RSS behavior in staging. Keep RSS disabled unless a reviewed HTTPS feed URL is configured. Do not accept partner callbacks or enable pushes until the secrets, host allow-list, and consent setup have been reviewed.
 
 ### 2. Build and test the backend
 
@@ -215,9 +240,12 @@ Never commit secrets. Use user-secrets locally and Key Vault in Azure.
 | `Auth:RefreshTokenLifetimeDays` | Backend | Rotating refresh token lifetime |
 | `Auth:TermsVersion`, `Auth:PrivacyVersion` | Backend | Current consent document versions |
 | `RateProviders:*` | Backend | Market-rate API key and per-exchange feed settings |
-| `Firebase:ServiceAccount` | Backend | FCM push |
+| `Redirect:SigningKey` | API | At least 32 random bytes; signs click identifiers |
+| `PartnerPostback:SecretsJson` | API | JSON map of exchange ID to unique HMAC secret; can alternatively use `PartnerPostback:Secrets:{exchangeId}` |
+| `PartnerReconciliation:ImportDirectory` | Worker | Optional private CSV import directory; enables the daily reconciliation job |
+| `Firebase:ServiceAccountJson` | API | Firebase Admin service-account JSON for FCM (or `Firebase:ServiceAccount`); omit in Development to use the console sender |
+| `News:Rss:FeedUrl` | Worker | Optional HTTPS RSS/Atom URL; enables the daily import |
 | `IOtpSender` implementation | Backend | Console sender in Development; configure a production SMS/email sender |
-| `PartnerPostback:Secrets` | Backend | HMAC secrets per exchange |
 | `API_BASE_URL` | Android `local.properties` / flavour | Per environment |
 | `google-services.json` | Android | Per flavour, not committed |
 
@@ -257,8 +285,10 @@ Pipelines run backend build, unit and Testcontainers integration tests, CodeQL a
 | Rate ingestion pipeline | Implemented | Configurable providers, guards/quarantine, SQL history, Redis hot cache, Hangfire jobs, freshness metrics, fixtures, and accuracy audit script are in place. |
 | Latest rates, history, and conversion API | Implemented | Redis-first reads with SQL fallback, stale flags, ETag/cache headers, 200-point history downsampling, USD cross-rates, ISO currency precision, and banker's rounding. |
 | Exchange listing and comparison API | Implemented | Active exchange quotes, amount-band fee calculation, deterministic ranking/filtering, stale warnings, labelled sponsored slot, disclaimer, and 60-second corridor/amount cache are covered by fixture-driven tests. |
+| Redirects and partner attribution | Implemented | Allow-listed destinations, privacy-safe ULID clicks, timestamped HMAC postbacks, idempotent conversions, commission ledger, CSV reconciliation, and monthly reports are implemented; security review found no issues in static code review. |
+| Favourites, rate alerts, FCM, and news | Implemented | User-scoped favourites and 50-item cap, threshold crossing/re-arm jobs, quiet hours/consent/token pruning, curated news, and optional bounded RSS import are implemented. |
 | Endpoint correctness and performance QA | In progress | Exchange comparison hand-calculated fixture tests and OpenAPI contract checks pass. The referenced Q3 QA prompts are not included in this checkout; run them when available. Record the k6 P95 after running the local or staging load test; target is under 200 ms from cache. |
-| Production rollout | Remaining | Provision environment secrets/provider credentials, run the protected migration/deployment workflow, and capture staging/production load evidence as described above. |
+| Engagement verification and production rollout | Remaining | Run engagement and OpenAPI tests, apply the migration in a disposable SQL/Testcontainers environment, complete the Q3-style accuracy audit, provision production secrets and per-exchange allow-lists, deploy through the protected workflow, and capture staging/production load evidence. |
 | Product integrations | Remaining | Android UI/API wiring and the admin portal are not delivered by these backend tasks; validate the licensed provider contracts and production alert recipients before launch. |
 
 ## Engineering standards

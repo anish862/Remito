@@ -9,6 +9,11 @@ public sealed class User
     public string? DisplayName { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
+    public bool RateAlertsEnabled { get; set; } = true;
+    public bool DailySummaryEnabled { get; set; }
+    public int? QuietHoursStartMinute { get; set; }
+    public int? QuietHoursEndMinute { get; set; }
+    public DateTimeOffset? LastAlertSummaryAt { get; set; }
     public ICollection<Device> Devices { get; } = new List<Device>();
     public ICollection<UserRoleAssignment> Roles { get; } = new List<UserRoleAssignment>();
 }

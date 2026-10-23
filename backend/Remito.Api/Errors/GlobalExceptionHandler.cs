@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Remito.Application.Auth;
 using Remito.Application.Rates;
 using Remito.Application.Exchanges;
+using Remito.Application.Engagement;
 
 namespace Remito.Api.Errors;
 
@@ -13,6 +14,30 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is EngagementOperationException engagementException)
+        {
+            httpContext.Response.StatusCode = engagementException.StatusCode;
+            httpContext.Response.ContentType = "application/problem+json";
+            await httpContext.Response.WriteAsJsonAsync(
+                new ProblemDetails
+                {
+                    Status = engagementException.StatusCode,
+                    Title = engagementException.StatusCode switch
+                    {
+                        StatusCodes.Status401Unauthorized => "Unauthorized",
+                        StatusCodes.Status404NotFound => "Not found",
+                        StatusCodes.Status409Conflict => "Conflict",
+                        _ => "Invalid request"
+                    },
+                    Detail = engagementException.Message,
+                    Instance = httpContext.Request.Path
+                },
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken: cancellationToken);
+            return true;
+        }
+
         if (exception is RateQueryException rateException)
         {
             httpContext.Response.StatusCode = rateException.StatusCode;

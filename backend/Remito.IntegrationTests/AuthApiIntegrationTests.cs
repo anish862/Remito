@@ -10,7 +10,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Remito.Application.Auth;
+using Remito.Application.Engagement;
 using Remito.Domain.Entities;
+using Remito.Infrastructure.Engagement;
 using Remito.Infrastructure.Persistence;
 using Testcontainers.MsSql;
 
@@ -179,6 +181,7 @@ public sealed class AuthApiIntegrationTests : IAsyncLifetime
                 services.AddSingleton<IOtpSender>(provider => provider.GetRequiredService<CapturingOtpSender>());
                 services.RemoveAll<IOtpRateLimiter>();
                 services.AddSingleton<IOtpRateLimiter, AllowAllOtpRateLimiter>();
+                services.AddScoped<INotificationPreferencesService, NotificationPreferencesService>();
             });
         }
     }

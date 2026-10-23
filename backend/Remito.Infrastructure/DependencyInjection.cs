@@ -6,6 +6,10 @@ using Remito.Application.Auth;
 using Remito.Application.Abstractions;
 using Remito.Application.Rates;
 using Remito.Application.Exchanges;
+using Remito.Application.Engagement;
+using Remito.Infrastructure.Engagement;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using Remito.Infrastructure.Auth;
 using Remito.Infrastructure.Caching;
 using Remito.Infrastructure.Persistence;
@@ -28,6 +32,50 @@ public static class DependencyInjection
             services.AddDbContext<RemitoDbContext>(options => options.UseSqlServer(databaseConnection));
             services.AddScoped<IRateQueryService, RateQueryService>();
             services.AddScoped<IExchangeComparisonService, ExchangeComparisonService>();
+            services.AddScoped<IRedirectService, RedirectService>();
+            services.AddScoped<IPartnerAttributionService, PartnerAttributionService>();
+            services.AddScoped<PartnerReconciliationJob>();
+            services.AddScoped<IPartnerReconciliationJob>(provider =>
+                provider.GetRequiredService<PartnerReconciliationJob>());
+            services.AddScoped<IFavouriteService, FavouriteService>();
+            services.AddScoped<IAlertService, AlertService>();
+            services.AddScoped<INotificationPreferencesService, NotificationPreferencesService>();
+            services.AddScoped<INewsService, NewsService>();
+            services.AddScoped<IPushNotificationService, PushNotificationService>();
+            services.AddScoped<RateAlertEvaluationJob>();
+            var rssFeedUrl = configuration["News:Rss:FeedUrl"];
+            if (!string.IsNullOrWhiteSpace(rssFeedUrl))
+            {
+                if (!Uri.TryCreate(rssFeedUrl, UriKind.Absolute, out var rssUri)
+                    || rssUri.Scheme != Uri.UriSchemeHttps
+                    || !string.IsNullOrEmpty(rssUri.UserInfo))
+                {
+                    throw new InvalidOperationException("News RSS feed URL must be an absolute HTTPS URL.");
+                }
+
+                services.AddHttpClient<NewsRssImportJob>()
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddScoped<IRssNewsImportJob>(provider =>
+                    provider.GetRequiredService<NewsRssImportJob>());
+            }
+        }
+
+        var firebaseServiceAccount = configuration["Firebase:ServiceAccountJson"]
+            ?? configuration["Firebase:ServiceAccount"];
+        if (string.IsNullOrWhiteSpace(firebaseServiceAccount))
+        {
+            services.TryAddSingleton<IPushSender>(serviceProvider =>
+                isDevelopment
+                    ? new ConsolePushSender(serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ConsolePushSender>>())
+                    : new UnconfiguredPushSender());
+        }
+        else
+        {
+            services.AddSingleton(_ => FirebaseApp.Create(new AppOptions
+            {
+                Credential = GoogleCredential.FromJson(firebaseServiceAccount)
+            }, "remito-push"));
+            services.AddSingleton<IPushSender, FirebaseAdminPushSender>();
         }
 
         if (configuration.GetValue<bool?>("Redis:Enabled") != false)
@@ -142,6 +190,8 @@ public static class DependencyInjection
             services.AddScoped<RateHistoryRollupJob>();
             services.AddScoped<IRateHistoryRollupJob>(provider =>
                 provider.GetRequiredService<RateHistoryRollupJob>());
+            services.AddScoped<IRateAlertEvaluationJob>(provider =>
+                provider.GetRequiredService<RateAlertEvaluationJob>());
         }
 
         return services;

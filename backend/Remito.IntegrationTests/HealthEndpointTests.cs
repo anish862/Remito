@@ -37,12 +37,25 @@ public sealed class HealthEndpointTests : IAsyncLifetime
         Assert.True(paths.TryGetProperty("/api/v1/convert", out var convert));
         Assert.True(paths.TryGetProperty("/api/v1/exchanges", out var exchanges));
         Assert.True(paths.TryGetProperty("/api/v1/compare", out var compare));
+        Assert.True(paths.TryGetProperty("/api/v1/redirect", out var redirect));
+        Assert.True(paths.TryGetProperty("/api/v1/partners/{exchangeId}/postback", out var postback));
+        Assert.True(paths.TryGetProperty("/api/v1/favourites", out var favourites));
+        Assert.True(paths.TryGetProperty("/api/v1/alerts", out var alerts));
+        Assert.True(paths.TryGetProperty("/api/v1/news", out var news));
+        Assert.True(paths.TryGetProperty("/api/v1/me/notification-preferences", out var notificationPreferences));
         Assert.True(latest.TryGetProperty("get", out _));
         Assert.True(history.TryGetProperty("get", out _));
         Assert.True(convert.TryGetProperty("post", out var convertPost));
         Assert.True(convertPost.TryGetProperty("requestBody", out _));
         Assert.True(exchanges.TryGetProperty("get", out _));
         Assert.True(compare.TryGetProperty("get", out _));
+        Assert.True(redirect.TryGetProperty("post", out _));
+        Assert.True(postback.TryGetProperty("post", out _));
+        Assert.True(favourites.TryGetProperty("get", out _));
+        Assert.True(favourites.TryGetProperty("post", out _));
+        Assert.True(alerts.TryGetProperty("post", out _));
+        Assert.True(news.TryGetProperty("get", out _));
+        Assert.True(notificationPreferences.TryGetProperty("get", out _));
         Assert.True(document.RootElement.GetProperty("components")
             .GetProperty("schemas").TryGetProperty("CurrencyConversionResponse", out _));
         Assert.True(document.RootElement.GetProperty("components")

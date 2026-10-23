@@ -93,6 +93,17 @@ Content-Type: application/json
 
 { "fcmToken": "example-fcm-token", "platform": "android" }
 
+### Read notification preferences
+GET {{baseUrl}}/me/notification-preferences
+Authorization: ******
+
+### Set notification preferences and UTC quiet hours (minutes after midnight)
+PATCH {{baseUrl}}/me/notification-preferences
+Authorization: ******
+Content-Type: application/json
+
+{ "rateAlertsEnabled": true, "dailySummaryEnabled": false, "quietHoursStartMinute": 1320, "quietHoursEndMinute": 420 }
+
 ### Remove device
 DELETE {{baseUrl}}/devices/{{resourceId}}
 
@@ -125,10 +136,22 @@ GET {{baseUrl}}/exchanges/example-exchange
 GET {{baseUrl}}/compare?from=OMR&to=INR&amount=10&sort=best&page=1&pageSize=20
 
 ### Record referral and redirect
-POST {{baseUrl}}/redirect/{{exchangeId}}
+POST {{baseUrl}}/redirect
 Content-Type: application/json
 
-{ "corridorId": "{{corridorId}}", "amount": 10 }
+{ "exchangeId": "{{exchangeId}}", "corridor": "OMR-INR", "amount": 10, "appInstalledHint": false }
+
+### Partner conversion postback (signature is HMAC-SHA256(timestamp + "." + exact body))
+POST {{baseUrl}}/partners/{{exchangeId}}/postback
+X-Partner-Timestamp: {{partnerTimestamp}}
+X-Partner-Signature: sha256={{partnerSignature}}
+Content-Type: application/json
+
+{ "clickId": "01J9TESTCLICKID0000000000000", "externalRef": "partner-order-123", "convertedAt": "2026-10-23T05:00:00Z", "amount": 10, "status": "confirmed" }
+
+### Monthly partner attribution and commission report
+GET {{baseUrl}}/admin/exchanges/{{exchangeId}}/reports/monthly?year=2026&month=10
+Authorization: ******
 
 ### List favourites
 GET {{baseUrl}}/favourites?page=1&pageSize=20
@@ -138,6 +161,12 @@ POST {{baseUrl}}/favourites
 Content-Type: application/json
 
 { "type": "exchange", "targetId": "{{exchangeId}}" }
+
+### Add currency favourite
+POST {{baseUrl}}/favourites
+Content-Type: application/json
+
+{ "type": "currency", "currencyCode": "INR" }
 
 ### Delete favourite
 DELETE {{baseUrl}}/favourites/{{resourceId}}
@@ -149,7 +178,7 @@ GET {{baseUrl}}/alerts?page=1&pageSize=20
 POST {{baseUrl}}/alerts
 Content-Type: application/json
 
-{ "pair": "OMR/INR", "direction": "above", "target": 220 }
+{ "pair": "OMR/INR", "direction": "above", "target": 220, "isActive": true, "isOneTime": false, "dailySummary": false }
 
 ### Update alert
 PATCH {{baseUrl}}/alerts/{{resourceId}}

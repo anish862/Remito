@@ -10,6 +10,9 @@ public sealed class Exchange
     public string? AppDeepLink { get; set; }
     public string? PlayStoreUrl { get; set; }
     public string? GatewayUrl { get; set; }
+    public string? AllowedRedirectHosts { get; set; }
+    public decimal CommissionFlatAmount { get; set; } = 0.50m;
+    public string? CommissionCurrencyCode { get; set; }
     public ExchangeStatus Status { get; set; }
     public ExchangeTier Tier { get; set; }
     public bool IsPlaceholder { get; set; }

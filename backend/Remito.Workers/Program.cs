@@ -1,8 +1,10 @@
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.Extensions.DependencyInjection;
+using Remito.Application.Engagement;
 using Remito.Infrastructure;
 using Remito.Infrastructure.Rates;
+using Remito.Infrastructure.Engagement;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddApplicationInsightsTelemetryWorkerService();
@@ -29,6 +31,33 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         Job.FromExpression<RateHistoryRollupJob>(job => job.RunAsync(CancellationToken.None)),
         Cron.Hourly(),
         new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    recurringJobs.AddOrUpdate(
+        "rate-alert-evaluation",
+        Job.FromExpression<RateAlertEvaluationJob>(job => job.RunAsync(CancellationToken.None)),
+        Cron.Minutely(),
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    recurringJobs.AddOrUpdate(
+        "rate-alert-daily-summary",
+        Job.FromExpression<RateAlertEvaluationJob>(job => job.RunDailySummaryAsync(CancellationToken.None)),
+        Cron.Daily(8),
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    if (!string.IsNullOrWhiteSpace(builder.Configuration["PartnerReconciliation:ImportDirectory"]))
+    {
+        recurringJobs.AddOrUpdate(
+            "partner-reconciliation-import",
+            Job.FromExpression<PartnerReconciliationJob>(job => job.RunAsync(CancellationToken.None)),
+            Cron.Daily(),
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    }
+
+    if (!string.IsNullOrWhiteSpace(builder.Configuration["News:Rss:FeedUrl"]))
+    {
+        recurringJobs.AddOrUpdate(
+            "news-rss-import",
+            Job.FromExpression<IRssNewsImportJob>(job => job.RunAsync(CancellationToken.None)),
+            Cron.Daily(7),
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+    }
 }
 
 host.Run();

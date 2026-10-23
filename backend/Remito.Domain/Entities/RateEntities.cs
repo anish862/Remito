@@ -83,6 +83,9 @@ public sealed class Alert
     public decimal Target { get; set; }
     public bool IsActive { get; set; }
     public DateTimeOffset? LastTriggeredAt { get; set; }
+    public bool IsOneTime { get; set; }
+    public bool DailySummary { get; set; }
+    public bool IsArmed { get; set; } = true;
     public User User { get; set; } = null!;
 }
 

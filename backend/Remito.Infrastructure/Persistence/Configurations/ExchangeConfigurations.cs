@@ -33,10 +33,16 @@ internal sealed class ExchangeConfiguration : IEntityTypeConfiguration<Exchange>
         builder.Property(exchange => exchange.AppDeepLink).HasMaxLength(2048);
         builder.Property(exchange => exchange.PlayStoreUrl).HasMaxLength(2048);
         builder.Property(exchange => exchange.GatewayUrl).HasMaxLength(2048);
+        builder.Property(exchange => exchange.AllowedRedirectHosts).HasMaxLength(2048);
+        builder.Property(exchange => exchange.CommissionFlatAmount).HasPrecision(18, 2);
+        builder.Property(exchange => exchange.CommissionFlatAmount).HasDefaultValue(0.50m);
+        builder.Property(exchange => exchange.CommissionCurrencyCode).HasMaxLength(3).IsFixedLength();
         builder.Property(exchange => exchange.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(exchange => exchange.Tier).HasConversion<string>().HasMaxLength(20);
         builder.HasIndex(exchange => exchange.Slug).IsUnique();
         builder.HasIndex(exchange => new { exchange.Status, exchange.Tier });
+        builder.HasOne<Currency>().WithMany().HasForeignKey(exchange => exchange.CommissionCurrencyCode)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasData(Placeholders);
     }
 }

@@ -114,6 +114,9 @@ internal sealed class AlertConfiguration : IEntityTypeConfiguration<Alert>
         builder.Property(alert => alert.Target).HasPrecision(18, 6);
         builder.HasIndex(alert => new { alert.UserId, alert.IsActive });
         builder.HasIndex(alert => new { alert.Pair, alert.IsActive, alert.Direction, alert.Target });
+        builder.Property(alert => alert.IsOneTime).HasDefaultValue(false);
+        builder.Property(alert => alert.DailySummary).HasDefaultValue(false);
+        builder.Property(alert => alert.IsArmed).HasDefaultValue(true);
         builder.HasOne(alert => alert.User).WithMany().HasForeignKey(alert => alert.UserId)
             .OnDelete(DeleteBehavior.Restrict);
     }
