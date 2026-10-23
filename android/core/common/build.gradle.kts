@@ -15,6 +15,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.coroutines.android)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.engine)
     testRuntimeOnly(libs.junit.platform.launcher)

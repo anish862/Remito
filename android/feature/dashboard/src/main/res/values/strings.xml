@@ -1,3 +1,7 @@
 <resources>
     <string name="dashboard_title">Dashboard</string>
+    <string name="refresh">Refresh</string>
+    <string name="search_currencies">Search currencies</string>
+    <string name="no_rates">No rates are available yet.</string>
+    <string name="updated_time">Updated %1$s</string>
 </resources>

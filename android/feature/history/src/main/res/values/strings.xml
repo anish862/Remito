@@ -1,3 +1,21 @@
 <resources>
     <string name="history_title">History</string>
+    <string name="no_history">No history is available for this period.</string>
+    <string name="history_minimum">Minimum: %1$s</string>
+    <string name="history_maximum">Maximum: %1$s</string>
+    <string name="history_open">Open: %1$s</string>
+    <string name="history_close">Close: %1$s</string>
+    <string name="range_1d">1D</string>
+    <string name="range_1w">1W</string>
+    <string name="range_1m">1M</string>
+    <string name="range_6m">6M</string>
+    <string name="range_1y">1Y</string>
+    <string name="period_today">today</string>
+    <string name="period_this_week">this week</string>
+    <string name="period_this_month">this month</string>
+    <string name="period_six_months">the last six months</string>
+    <string name="period_this_year">this year</string>
+    <string name="history_summary_rose">%1$s rose %2$s percent %3$s</string>
+    <string name="history_summary_fell">%1$s fell %2$s percent %3$s</string>
+    <string name="selected_history_point">Selected point at %1$s: %2$s</string>
 </resources>
