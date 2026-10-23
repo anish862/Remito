@@ -44,7 +44,7 @@ public sealed class RatesController(IRateQueryService rateQueryService) : Contro
             symbols.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
             cancellationToken);
         Response.Headers.CacheControl = "public, max-age=15";
-        var etag = $"\"{System.Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(response)))}\"";
+        var etag = $"W/\"{System.Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(response)))}\"";
         Response.Headers.ETag = etag;
         if (Request.Headers.TryGetValue("If-None-Match", out var conditionalTags)
             && conditionalTags.ToString().Split(',').Any(candidate =>

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Remito.Application.Rates;
 using Remito.Infrastructure.Persistence;
 
 namespace Remito.IntegrationTests;
@@ -20,6 +21,23 @@ public sealed class HealthEndpointTests : IAsyncLifetime
         using var response = await client.GetAsync("/health");
 
         response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Json_responses_are_compressed_when_requested()
+    {
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/v1/rates/latest?base=OMR&symbols=INR");
+        request.Headers.AcceptEncoding.ParseAdd("gzip");
+
+        using var response = await client.SendAsync(request);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains("gzip", response.Content.Headers.ContentEncoding);
+        Assert.Contains("Accept-Encoding", response.Headers.Vary);
+        Assert.True(response.Headers.ETag?.IsWeak ?? false);
     }
 
     [Fact]
@@ -80,6 +98,42 @@ public sealed class HealthEndpointTests : IAsyncLifetime
                 services.AddDbContext<RemitoDbContext>(options =>
                     options.UseSqlServer(
                         "Server=localhost;Database=Remito;Trusted_Connection=True;TrustServerCertificate=True"));
+                services.RemoveAll<IRateQueryService>();
+                services.AddSingleton<IRateQueryService, StubRateQueryService>();
             });
+    }
+
+    private sealed class StubRateQueryService : IRateQueryService
+    {
+        public Task<LatestRatesResponse> GetLatestAsync(
+            string baseCurrency,
+            IReadOnlyList<string> symbols,
+            CancellationToken cancellationToken)
+        {
+            var rates = Enumerable.Range(0, 100)
+                .Select(_ => new LatestRateItem("INR", 100m, 0m, DateTimeOffset.UnixEpoch, false))
+                .ToArray();
+            return Task.FromResult(new LatestRatesResponse(baseCurrency, rates));
+        }
+
+        public Task<RateHistoryResponse> GetHistoryAsync(
+            string pair,
+            string range,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new RateHistoryResponse(pair, range, [], 0m, 0m, 0m, 0m));
+
+        public Task<CurrencyConversionResponse> ConvertAsync(
+            decimal amount,
+            string fromCurrency,
+            string toCurrency,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new CurrencyConversionResponse(
+                amount,
+                fromCurrency,
+                toCurrency,
+                amount,
+                1m,
+                DateTimeOffset.UnixEpoch,
+                false));
     }
 }

@@ -9,13 +9,18 @@ function hasHeader(headers, name) {
 
 export const options = {
   stages: [
-    { duration: '30s', target: 20 },
-    { duration: '60s', target: 20 },
-    { duration: '15s', target: 0 },
+    { duration: '1m', target: 100 },
+    { duration: '2m', target: 100 },
+    { duration: '2m', target: 1000 },
+    { duration: '3m', target: 1000 },
+    { duration: '2m', target: 5000 },
+    { duration: '5m', target: 5000 },
+    { duration: '1m', target: 0 },
   ],
   thresholds: {
-    http_req_duration: ['p(95)<200'],
-    checks: ['rate>0.99'],
+    http_req_duration: ['p(95)<400'],
+    http_req_failed: ['rate<0.005'],
+    checks: ['rate>0.995'],
   },
 };
 

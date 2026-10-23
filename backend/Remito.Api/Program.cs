@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Remito.Api.Errors;
@@ -32,6 +33,12 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfig
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
 builder.Services.Configure<AdsOptions>(builder.Configuration.GetSection("Ads"));
 builder.Services.AddRateLimiter(options =>
 {
@@ -122,6 +129,10 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/api/v1/rates/latest")
+        || context.Request.Path.StartsWithSegments("/api/v1/rates/history"),
+    compression => compression.UseResponseCompression());
 app.UseExceptionHandler();
 app.Use(async (context, next) =>
 {

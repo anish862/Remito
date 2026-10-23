@@ -20,8 +20,8 @@ android {
         applicationId = "com.remito.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = providers.gradleProperty("REMITO_VERSION_CODE").orElse("1").get().toInt()
+        versionName = providers.gradleProperty("REMITO_VERSION_NAME").orElse("0.1.0").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         fun configuredValue(name: String): String =

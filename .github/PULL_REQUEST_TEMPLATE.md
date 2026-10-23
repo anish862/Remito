@@ -9,6 +9,12 @@
 - [ ] `./android/gradlew -p android assembleDebug testDebugUnitTest`
 - [ ] `./android/gradlew -p android ktlintCheck detekt`
 
+## Release quality evidence
+
+- [ ] Attach the benchmark report for 100, 1,000, and 5,000 concurrent users, including P95 and error rate
+- [ ] Attach the accessibility checklist results and pseudo-locale/RTL screenshots
+- [ ] Record unresolved release blockers and obtain required go/no-go sign-offs
+
 ## Product and security checks
 
 - [ ] Remito does not process or move customer money
