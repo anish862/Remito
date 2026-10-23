@@ -1,0 +1,7 @@
+<resources>
+    <string name="news_title">Market news</string>
+    <string name="news_empty">No news is available right now.</string>
+    <string name="news_read_source">Read original source</string>
+    <string name="news_source_unavailable">Source link is unavailable.</string>
+    <string name="news_back">Back to news</string>
+</resources>

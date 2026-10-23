@@ -28,6 +28,8 @@ public interface IAuthService
         string fcmToken,
         DevicePlatform platform,
         CancellationToken cancellationToken);
+    Task<IReadOnlyList<DeviceRegistrationResult>> ListDevicesAsync(Guid userId, CancellationToken cancellationToken);
+    Task RemoveDeviceAsync(Guid userId, Guid deviceId, CancellationToken cancellationToken);
 }
 
 public interface IOtpSender

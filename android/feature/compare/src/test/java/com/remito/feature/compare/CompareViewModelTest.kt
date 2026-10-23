@@ -1,6 +1,8 @@
 package com.remito.feature.compare
 
 import androidx.lifecycle.SavedStateHandle
+import com.remito.core.common.UserSettings
+import com.remito.core.network.EngagementRepository
 import com.remito.core.network.ExchangeComparisonResponseDto
 import com.remito.core.network.ExchangeOfferDto
 import com.remito.core.network.RedirectResponseDto
@@ -85,7 +87,19 @@ class CompareViewModelTest {
                         disclosureText = "Remito does not process payments.",
                     )
                 val events = mutableListOf<RedirectEvent>()
-                val viewModel = CompareViewModel(repository, RedirectAnalytics(events::add), SavedStateHandle())
+                val engagement = mockk<EngagementRepository>()
+                val userSettings = mockk<UserSettings>()
+                every { userSettings.defaultCorridor() } returns "OMR/INR"
+                every { engagement.observeFavourites() } returns flowOf(emptyList())
+                coEvery { engagement.refreshFavourites() } returns emptyList()
+                val viewModel =
+                    CompareViewModel(
+                        repository,
+                        engagement,
+                        RedirectAnalytics(events::add),
+                        userSettings,
+                        SavedStateHandle(),
+                    )
                 advanceUntilIdle()
 
                 viewModel.requestRedirect(offer)
@@ -106,10 +120,15 @@ class CompareViewModelTest {
 
     private fun viewModelWithOffers(offers: List<ExchangeOfferDto>): CompareViewModel {
         val repository = mockk<ComparisonRepository>()
+        val engagement = mockk<EngagementRepository>()
+        val userSettings = mockk<UserSettings>()
+        every { userSettings.defaultCorridor() } returns "OMR/INR"
+        every { engagement.observeFavourites() } returns flowOf(emptyList())
+        coEvery { engagement.refreshFavourites() } returns emptyList()
         every { repository.observeCached(any(), any()) } returns flowOf(offers)
         coEvery { repository.refresh(any(), any(), any()) } returns response(offers)
         coEvery { repository.markCachedStale(any(), any()) } returns Unit
-        return CompareViewModel(repository, RedirectAnalytics { }, SavedStateHandle())
+        return CompareViewModel(repository, engagement, RedirectAnalytics { }, userSettings, SavedStateHandle())
     }
 
     private fun response(offers: List<ExchangeOfferDto>) =

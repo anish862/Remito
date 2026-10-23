@@ -14,6 +14,8 @@
     <string name="compare_updated">Updated %1$s</string>
     <string name="compare_best_rate_badge">Best rate</string>
     <string name="compare_has_app_chip">Has app</string>
+    <string name="compare_add_favourite">Add %1$s to favourites</string>
+    <string name="compare_remove_favourite">Remove %1$s from favourites</string>
     <string name="compare_choose">Choose</string>
     <string name="compare_details">Details</string>
     <string name="compare_no_exchanges">No exchanges are available for this corridor yet.</string>

@@ -2,9 +2,11 @@ package com.remito.feature.convert
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.remito.core.common.UserSettings
 import com.remito.core.network.ConversionQuoteDto
 import com.remito.core.network.RatesRepository
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +28,8 @@ class ConvertViewModelTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val repository = mockk<RatesRepository>()
+                val userSettings = mockk<UserSettings>()
+                every { userSettings.defaultCorridor() } returns "OMR/INR"
                 val cached =
                     ConversionQuoteDto(
                         BigDecimal.ONE,
@@ -39,7 +43,7 @@ class ConvertViewModelTest {
                 coEvery { repository.convert(any(), any(), any()) } throws IOException("Offline")
                 coEvery { repository.cachedConversionQuote(any(), any(), any()) } returns cached
 
-                val viewModel = ConvertViewModel(repository, SavedStateHandle(mapOf("amount" to "1")))
+                val viewModel = ConvertViewModel(repository, userSettings, SavedStateHandle(mapOf("amount" to "1")))
                 advanceUntilIdle()
 
                 viewModel.uiState.test {

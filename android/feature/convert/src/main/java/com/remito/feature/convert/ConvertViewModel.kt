@@ -3,6 +3,7 @@ package com.remito.feature.convert
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.remito.core.common.UserSettings
 import com.remito.core.network.ConversionQuoteDto
 import com.remito.core.network.RatesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +34,7 @@ class ConvertViewModel
     @Inject
     constructor(
         private val repository: RatesRepository,
+        userSettings: UserSettings,
         private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private companion object {
@@ -43,8 +45,8 @@ class ConvertViewModel
             MutableStateFlow(
                 ConvertUiState.Content(
                     amount = savedStateHandle["amount"] ?: "1",
-                    from = savedStateHandle["from"] ?: "OMR",
-                    to = savedStateHandle["to"] ?: "INR",
+                    from = savedStateHandle["from"] ?: userSettings.defaultCorridor().substringBefore('/'),
+                    to = savedStateHandle["to"] ?: userSettings.defaultCorridor().substringAfter('/'),
                 ),
             )
         val uiState: StateFlow<ConvertUiState> = _uiState

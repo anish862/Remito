@@ -3,6 +3,9 @@ package com.remito.feature.compare
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.remito.core.common.UserSettings
+import com.remito.core.database.FavouriteEntity
+import com.remito.core.network.EngagementRepository
 import com.remito.core.network.ExchangeOfferDto
 import com.remito.core.network.RedirectResponseDto
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,6 +45,8 @@ sealed interface CompareUiState {
         val confirmationOffer: ExchangeOfferDto? = null,
         val isRedirecting: Boolean = false,
         val redirectError: String? = null,
+        val favouriteExchangeIds: Set<String> = emptySet(),
+        val favouriteError: String? = null,
     ) : CompareUiState {
         val isAmountValid: Boolean get() = validAmount(amount) != null
         val hasValidQuery: Boolean get() = isAmountValid && from != to
@@ -71,14 +76,16 @@ class CompareViewModel
     @Inject
     constructor(
         private val repository: ComparisonRepository,
+        private val engagementRepository: EngagementRepository,
         private val analytics: RedirectAnalytics,
+        userSettings: UserSettings,
         private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState =
             MutableStateFlow(
                 CompareUiState.Content(
-                    from = savedStateHandle["from"] ?: "OMR",
-                    to = savedStateHandle["to"] ?: "INR",
+                    from = savedStateHandle["from"] ?: userSettings.defaultCorridor().substringBefore('/'),
+                    to = savedStateHandle["to"] ?: userSettings.defaultCorridor().substringAfter('/'),
                     amount = savedStateHandle["amount"] ?: "100",
                 ),
             )
@@ -91,8 +98,46 @@ class CompareViewModel
         private var awaitingReturn = false
 
         init {
+            viewModelScope.launch {
+                engagementRepository.observeFavourites().collect { favourites ->
+                    content()?.let { current ->
+                        _uiState.value =
+                            current.copy(
+                                favouriteExchangeIds =
+                                    favourites
+                                        .filter { it.type == "exchange" }
+                                        .map(FavouriteEntity::targetId)
+                                        .toSet(),
+                            )
+                    }
+                }
+            }
+            viewModelScope.launch {
+                try {
+                    engagementRepository.refreshFavourites()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    content()?.let { _uiState.value = it.copy(favouriteError = error.message) }
+                }
+            }
             observeCurrentCache()
             refresh()
+        }
+
+        fun toggleExchangeFavourite(exchangeId: String) {
+            viewModelScope.launch {
+                try {
+                    engagementRepository.toggleExchangeFavourite(exchangeId)
+                    content()?.let { _uiState.value = it.copy(favouriteError = null) }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: IOException) {
+                    content()?.let {
+                        _uiState.value = it.copy(favouriteError = error.message ?: "Could not update favourite.")
+                    }
+                }
+            }
         }
 
         fun setFrom(currency: String) {

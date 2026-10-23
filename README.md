@@ -144,7 +144,7 @@ Partners post conversions to `POST /api/v1/partners/{exchangeId}/postback`. Sign
 
 Configure each exchange's `AppDeepLink`, `PlayStoreUrl`, `GatewayUrl`, and `AllowedRedirectHosts` through the controlled exchange provisioning process. The allow-list is a comma-separated set of exact host names, for example `app.example.com,pay.example.com`; do not include schemes, paths, wildcards, or user-controlled values. Provision `PartnerPostback:SecretsJson` as a JSON object keyed by exchange ID, with a unique high-entropy secret per partner. The worker can import partner CSV files when `PartnerReconciliation:ImportDirectory` points to a private directory. Files are limited to 10 MB, use `<exchange-guid>_...csv` names, and require `external_ref,click_id,converted_at,amount,commission,currency` columns. A daily Hangfire job records unmatched report rows and missing postbacks; monthly reports compare imported commissions with the ledger.
 
-Authenticated users can manage favourites at `GET|POST /api/v1/favourites` and `DELETE /api/v1/favourites/{id}` (up to 50, duplicate adds are idempotent), and rate alerts at `GET|POST /api/v1/alerts`, `PATCH|DELETE /api/v1/alerts/{id}`. The alert worker checks fresh Redis quotes each minute, notifies once per threshold crossing, and re-arms after the rate crosses back. Daily summaries run at 08:00 UTC. `GET|PATCH /api/v1/me/notification-preferences` controls alert/digest delivery and quiet-hour bounds in UTC minutes after midnight. Firebase Admin credentials enable production FCM; in Development the console sender is used. Invalid device tokens are pruned. Marketing notifications require marketing consent, and push data must not include personal information.
+Authenticated users can manage favourites at `GET|POST /api/v1/favourites` and `DELETE /api/v1/favourites/{id}` (up to 50, duplicate adds are idempotent), and rate alerts at `GET|POST /api/v1/alerts`, `PATCH|DELETE /api/v1/alerts/{id}`. The alert worker checks fresh Redis quotes each minute, notifies once per threshold crossing, and re-arms after the rate crosses back. Daily summaries run at 08:00 UTC. `GET|PUT /api/v1/notification-preferences` controls alert/digest delivery and quiet-hour bounds in UTC minutes after midnight. Devices are registered through `POST /api/v1/devices` and can be removed or listed by the authenticated owner. Firebase Admin credentials enable production FCM; in Development the console sender is used. Invalid device tokens are pruned. Marketing notifications require marketing consent, and push data must not include personal information.
 
 The public news feed is `GET /api/v1/news?page=1&pageSize=20`; item detail is `GET /api/v1/news/{slug}`. Admin-curated list and save endpoints are under `/api/v1/admin/news`. Optional RSS/Atom import is enabled by `News:Rss:FeedUrl` (HTTPS only, redirects disabled, response capped at 2 MB and 25 entries) and runs daily. All routes are versioned under `/api/v1`; Swagger is available at `/swagger` in non-production environments.
 
@@ -224,6 +224,10 @@ cd android
 
 Open `/android` in Android Studio, create or select an API 26+ emulator, and run the `app` configuration with the `devDebug` variant. The dev variant points to the local API at `http://10.0.2.2:5191/api/v1/` (the Android emulator's host bridge). Start the API first and configure its local SQL/Redis settings as described above. The app uses OTP sign-in, then fetches rates and stores them in Room so previously loaded values remain visible offline. On a physical device, override `API_BASE_URL` in `android/app/build.gradle.kts` with a reachable HTTPS development API; do not use the emulator bridge address.
 
+For local push testing, create a Firebase project/app for the Android application ID and provide `REMITO_FIREBASE_APP_ID`, `REMITO_FIREBASE_API_KEY`, `REMITO_FIREBASE_PROJECT_ID`, and `REMITO_FIREBASE_SENDER_ID` as Gradle properties or environment variables. Configure the backend Development Firebase Admin credentials separately if testing actual server delivery; without both configurations, normal app functionality remains available but FCM registration/delivery is not.
+
+The Android app schedules a six-hour favourite-rate refresh only when the device has unmetered network and battery is not low. Android may defer or stop background work under battery optimization; verify on a physical device. Android 13+ notification permission is requested only after the in-app rationale.
+
 The Android project has `dev`, `staging`, and `prod` product flavors. Debug builds use certificate logging only at BASIC level and do not pin certificates. Release variants require certificate pins at build time:
 
 ```bash
@@ -237,12 +241,16 @@ Release signing uses `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDR
 
 Production Android releases are distributed as signed app bundles, not installed directly onto production devices:
 
-1. Confirm the production API URL and approved certificate SPKI pins with the release/security owner; configure the `prod` flavor URL and `REMITO_CERTIFICATE_PINS` build property.
+1. Confirm the production API URL and approved certificate SPKI pins with the release/security owner; configure the `prod` flavor URL and `REMITO_CERTIFICATE_PINS` build property. Configure the production Firebase Android app values (`REMITO_FIREBASE_*`) and approved HTTPS legal-document URLs (`REMITO_PRIVACY_POLICY_URL`, `REMITO_TERMS_URL`); never commit Firebase service-account credentials or production signing material.
 2. Build the signed bundle on a protected release runner with keystore values injected through environment secrets:
 
    ```bash
    cd android
-   ./gradlew -PREMITO_CERTIFICATE_PINS='sha256/APPROVED_PIN' :app:bundleProdRelease
+   ./gradlew \
+     -PREMITO_CERTIFICATE_PINS='sha256/APPROVED_PIN' \
+     -PREMITO_PRIVACY_POLICY_URL='https://YOUR_PRODUCTION_HOST/privacy' \
+     -PREMITO_TERMS_URL='https://YOUR_PRODUCTION_HOST/terms' \
+     :app:bundleProdRelease
    ```
 
 3. Upload `app/build/outputs/bundle/prodRelease/app-prod-release.aab` to the Play Console internal test track, run login/rate/offline/accessibility checks, then promote through the reviewed staged rollout. Keep signing material in the approved Play App Signing/CI secret workflow. Do not sideload a locally signed artifact as a production installation.
@@ -273,7 +281,8 @@ Never commit secrets. Use user-secrets locally and Key Vault in Azure.
 | `API_BASE_URL` | Android product flavor | Configured by `dev`, `staging`, and `prod` in `android/app/build.gradle.kts` |
 | `REMITO_CERTIFICATE_PINS` | Android Gradle property | Comma-separated approved `sha256/...` SPKI pins; required for release variants |
 | `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Android release build | Inject from protected CI/local secret storage; never commit |
-| `google-services.json` | Android | Per flavour, not committed |
+| `REMITO_FIREBASE_APP_ID`, `REMITO_FIREBASE_API_KEY`, `REMITO_FIREBASE_PROJECT_ID`, `REMITO_FIREBASE_SENDER_ID` | Android Gradle properties | Firebase Android client configuration; use per-environment values, do not commit |
+| `REMITO_PRIVACY_POLICY_URL`, `REMITO_TERMS_URL` | Android Gradle properties | Public HTTPS legal-document URLs; required for production legal links |
 
 ## Testing
 
@@ -315,10 +324,11 @@ Pipelines run backend build, unit and Testcontainers integration tests, CodeQL a
 | Favourites, rate alerts, FCM, and news | Implemented | User-scoped favourites and 50-item cap, threshold crossing/re-arm jobs, quiet hours/consent/token pruning, curated news, and optional bounded RSS import are implemented. |
 | Endpoint correctness and performance QA | In progress | Exchange comparison hand-calculated fixture tests and OpenAPI contract checks pass. The referenced Q3 QA prompts are not included in this checkout; run them when available. Record the k6 P95 after running the local or staging load test; target is under 200 ms from cache. |
 | Engagement verification and production rollout | Remaining | Engagement unit tests (10) and contract tests pass; SQL Server migration tests pass. The full integration suite still has two failures to resolve: a TestServer response-writer/runtime incompatibility in auth coverage and a Swagger schema assertion. Then complete the Q3-style accuracy audit, provision production secrets and per-exchange allow-lists, deploy through the protected workflow, and capture staging/production load evidence. |
-| Product integrations | Remaining | The admin portal remains a placeholder; validate licensed provider contracts and production alert recipients before launch. Android end-to-end QA for comparison and integration of alerts and profile remain outstanding. |
+| Product integrations | Remaining | The admin portal remains a placeholder; validate licensed provider contracts and production alert recipients before launch. Android end-to-end device QA for engagement features remains outstanding. |
 | Android core networking and persistence | In progress | Retrofit contract aligned to latest/history/conversion API, bearer refresh serialization, encrypted token storage, problem-details mapping, TLS pin configuration, retry policy, and Room cache/DAOs are present. Remaining: generated OpenAPI client/codegen, explicit schema migration history, repository fake-API/in-memory Room migration coverage, and app-wide integration for the other features. |
 | Android auth and rates screens | In progress | OTP entry, encrypted access/refresh token persistence, session gating, dashboard, converter, history chart, offline rate cache, reusable UI states, and initial ViewModel/formatter/Compose tests are added. Remaining: run full Android QA on an SDK/emulator, screenshots for light/dark and size matrix, TalkBack/AA audit, error/offline Compose coverage, refresh-token race test execution, and validate dev API OTP delivery. |
 | Android comparison and redirects | In progress | Compare screen supports OMR-INR/amount selection, ranked and sponsored offers, best-rate flags from the API, cached stale results, offer details, confirmation disclosure, and app/Play Store/Custom Tab fallback. Backend redirect response now includes an allow-listed gateway fallback. Remaining: run device UI/fallback tests, screenshot matrix, production analytics provider wiring, and the redirect URL/privacy checklist. |
+| Android engagement | In progress | Favourite rates/exchanges sync with the backend and cached quick-rate tab; alerts can be created, repeated, toggled, and deleted; news is cached and opens trusted HTTPS sources in Custom Tabs; profile includes preferences, consent, logout, and account deletion; FCM channels/permission/deep links and constrained periodic favourite refresh are wired. Remaining: provision Firebase/legal URLs, add backend push configuration, and complete device permission-denial, push delivery/deep-link, battery saver, and account-deletion QA. |
 | Android release readiness | Remaining | Configure real staging/production hostnames and certificate pins, provide signing configuration, complete the Play Console review/release process, and finish detekt/lint/build/test gates before distribution. |
 
 ## Engineering standards

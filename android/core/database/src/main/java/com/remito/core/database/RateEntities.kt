@@ -50,6 +50,7 @@ data class ComparisonOfferEntity(
 data class FavouriteEntity(
     @PrimaryKey val targetId: String,
     val type: String,
+    val remoteId: String? = null,
 )
 
 @Entity(tableName = "alerts")
@@ -59,4 +60,17 @@ data class AlertEntity(
     val direction: String,
     val target: String,
     val isActive: Boolean,
+    val isOneTime: Boolean = false,
+    val dailySummary: Boolean = false,
+)
+
+@Entity(tableName = "cached_news")
+data class CachedNewsEntity(
+    @PrimaryKey val slug: String,
+    val id: String,
+    val title: String,
+    val summary: String,
+    val body: String,
+    val sourceUrl: String?,
+    val publishedAt: String?,
 )

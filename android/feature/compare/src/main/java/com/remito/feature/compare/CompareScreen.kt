@@ -107,6 +107,7 @@ private fun CompareScreenContent(
         Text(stringResource(R.string.compare_title), style = MaterialTheme.typography.headlineMedium)
         CompareControls(content, viewModel)
         RedirectErrorMessage(content.redirectError, retryOffer, onChoose)
+        content.favouriteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         ComparisonResults(content, viewModel, onChoose)
         Text(
             text = disclosure,
@@ -257,8 +258,13 @@ private fun ColumnScope.ComparisonResults(
                         offer = offer,
                         from = content.from,
                         to = content.to,
-                        onDetails = { viewModel.showDetails(offer) },
-                        onChoose = { onChoose(offer) },
+                        isFavourite = offer.id in content.favouriteExchangeIds,
+                        actions =
+                            ExchangeOfferActions(
+                                onFavouriteClick = { viewModel.toggleExchangeFavourite(offer.id) },
+                                onDetails = { viewModel.showDetails(offer) },
+                                onChoose = { onChoose(offer) },
+                            ),
                     )
                 }
             }
