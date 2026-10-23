@@ -16,9 +16,36 @@
 - Local SQL Server and Redis compose services
 - Repository documentation and contribution templates
 
+## Delivered in the current admin/ads/analytics increment
+
+- Added role-protected scheduled ad campaign listing/creation with HTTPS creative URL validation and audit logging.
+- Added authenticated contextual slot selection for the four supported slots, a rolling per-user impression cap, explicit `Ad` label, click/impression recording, and a server-side configuration switch.
+- Added the fixed analytics taxonomy endpoint and UUIDv4 installation-id hashing before App Insights ingestion; added one typed Android tracker with a locally persisted random installation UUID.
+- Added API rate limiting, default-deny CORS with exact-origin configuration, security headers, and an RBAC role/action policy matrix test.
+- Verification: full backend unit suite passes (77/77); the focused RBAC role/action matrix, frequency-cap threshold cases, and analytics taxonomy/UUID hashing tests pass (17/17). RBAC coverage checks all 4 roles against 12 protected admin actions (48 allow/deny checks). SQL-backed ad selection, cap enforcement, campaign creation/listing, and audit writes pass (1/1 integration test). Android network tests, dev Kotlin compilation, and ktlint pass with JDK 21/Android SDK configured. The backend solution builds without warnings.
+
+### RBAC QA gate
+
+Results from `AdminRbacMatrixTests`:
+
+| Role | Allowed admin actions | Denied admin actions |
+|---|---|---|
+| Admin | All 12 protected actions | None |
+| PartnerManager | 6 `PartnerManagement` actions and 2 `ReadOnly` actions | `AdsManagement` and `AdminOnly` |
+| AdsManager | Campaign creation and 2 `ReadOnly` actions | `PartnerManagement` and `AdminOnly` |
+| ReadOnly | Campaign listing and audit-log viewing | All write/management actions |
+
+The test checks every role against every action policy (48 assertions); all passed. CSV-validation and fee-upload tests are still pending because the fee upload workflow is not implemented.
+
+This is a partial increment, not completion of the requested programme. There is still no browser admin portal, fee CSV processing, vendor workflow, rate override, reporting/export, creative Blob upload, targeting/budget, Android ad renderer, analytics screen wiring/funnels/dashboards, Bicep alert completion, or security threat model/VAPT scope.
+
 ## Next
 
-- Complete admin and Azure Bicep work in their planned steps
+- Implement the Razor Pages/Blazor portal and remaining admin workflows, including strict validation, upload scanning, masked lookups, CSV exports, and audit viewer; add role/action and CSV validation tests.
+- Complete ad campaign budgets/targeting/Blob creatives and consent-aware targeting only after consent semantics are defined; wire Android display/events behind a remotely refreshable kill switch and keep ads off the redirect confirmation screen.
+- Wire analytics tracking at Android event sources, build funnel queries and App Insights dashboards, and finish Bicep alert rules (including push and crash-free signals).
+- Complete MASVS L1/selected L2 verification, secret rotation, dependency/container scans, redirect SSRF/open-redirect tests, HMAC rotation, STRIDE threat model review, VAPT scope, and Q8 security test plan.
+- Complete Azure Bicep work in the planned steps.
 - Run Android instrumentation tests on an emulator; finish screenshot matrices, TalkBack, contrast, and large-font QA
 - Configure real staging/production API URLs, certificate pins, and release signing; verify OTP delivery against the development sender
 - Add explicit Room migration execution tests and complete fake-API repository/interceptor/UI test coverage

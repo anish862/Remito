@@ -426,7 +426,14 @@ data class AdCreativeDto(
     val imageUrl: String,
     val targetUrl: String,
     val altText: String,
-    val sponsored: Boolean,
+)
+
+@JsonClass(generateAdapter = false)
+data class CreateAdCreativeRequest(
+    val slot: String,
+    val imageUrl: String,
+    val targetUrl: String,
+    val altText: String,
 )
 
 @JsonClass(generateAdapter = false)
@@ -435,6 +442,7 @@ data class AdCampaignWrite(
     val startsAt: String,
     val endsAt: String,
     val isActive: Boolean,
+    val creative: CreateAdCreativeRequest,
 )
 
 @JsonClass(generateAdapter = false)
@@ -444,6 +452,52 @@ data class AdCampaignDto(
     val startsAt: String,
     val endsAt: String,
     val isActive: Boolean,
+    val creatives: List<AdCreativeDto>,
+)
+
+@JsonClass(generateAdapter = false)
+data class AdSlotResponseDto(
+    val label: String,
+    val creativeId: String,
+    val slot: String,
+    val imageUrl: String,
+    val targetUrl: String,
+    val altText: String,
+    val isPersonalized: Boolean,
+)
+
+enum class AdEventType {
+    @Json(name = "impression")
+    IMPRESSION,
+
+    @Json(name = "click")
+    CLICK,
+}
+
+@JsonClass(generateAdapter = false)
+data class AdEventRequest(
+    val creativeId: String,
+    val eventType: AdEventType,
+)
+
+enum class AnalyticsEventName(
+    val wireName: String,
+) {
+    SCREEN_VIEW("screen_view"),
+    COMPARE_RUN("compare_run"),
+    EXCHANGE_SELECTED("exchange_selected"),
+    REDIRECT_STARTED("redirect_started"),
+    REDIRECT_RETURNED("redirect_returned"),
+    ALERT_CREATED("alert_created"),
+    NOTIFICATION_OPENED("notification_opened"),
+    AD_IMPRESSION("ad_impression"),
+    AD_CLICK("ad_click"),
+}
+
+@JsonClass(generateAdapter = false)
+data class AnalyticsEventRequest(
+    val installationId: String,
+    val eventName: String,
 )
 
 enum class RateSourceType {

@@ -195,8 +195,40 @@ GET {{baseUrl}}/news?page=1&pageSize=20
 ### Get news item
 GET {{baseUrl}}/news/currency-market-update
 
-### Load ad slot
-GET {{baseUrl}}/ads/slots/compare-banner
+### Load contextual ad slot (authenticated app user)
+GET {{baseUrl}}/ads/slots?slot=banner
+Authorization: Bearer {{accessToken}}
+
+### Record an ad impression or click (authenticated app user)
+POST {{baseUrl}}/ads/events
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "creativeId": "{{resourceId}}", "eventType": "impression" }
+
+### Ingest a privacy-minimized analytics event
+POST {{baseUrl}}/analytics/events
+Content-Type: application/json
+
+{ "installationId": "ad59e6e4-831e-4d5e-8d29-0da781cecc6d", "eventName": "screen_view" }
+
+### Create a scheduled ad campaign (Admin or AdsManager)
+POST {{baseUrl}}/admin/ad-campaigns
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Autumn campaign",
+  "startsAt": "2026-11-01T00:00:00Z",
+  "endsAt": "2026-11-30T23:59:59Z",
+  "isActive": true,
+  "creative": {
+    "slot": "banner",
+    "imageUrl": "https://cdn.example.com/banner.png",
+    "targetUrl": "https://partner.example.com/",
+    "altText": "Partner offer"
+  }
+}
 
 ### Admin list exchanges
 GET {{baseUrl}}/admin/exchanges?page=1&pageSize=20
