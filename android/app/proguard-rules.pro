@@ -1,0 +1,2 @@
+-keep class com.remito.core.network.** { *; }
+-keepattributes Signature

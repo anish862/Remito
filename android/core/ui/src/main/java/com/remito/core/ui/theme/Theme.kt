@@ -2,6 +2,7 @@ package com.remito.core.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -23,10 +24,13 @@ private val DarkColors =
         surface = SurfaceDark,
     )
 
+val RemitoTypography = Typography()
+
 @Composable
 fun RemitoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
+        typography = RemitoTypography,
         content = content,
     )
 }

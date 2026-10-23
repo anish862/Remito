@@ -4,6 +4,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -85,25 +86,20 @@ interface RemitoApi {
 
     @GET("rates/latest")
     suspend fun latestRate(
-        @Query("pair") pair: String,
-    ): Response<MarketRateDto>
+        @Query("base") base: String,
+        @Query("symbols") symbols: String,
+    ): Response<LatestRatesResponseDto>
 
     @GET("rates/history")
-    @Suppress("LongParameterList")
     suspend fun rateHistory(
         @Query("pair") pair: String,
-        @Query("bucket") bucket: HistoryBucket,
-        @Query("from") from: String? = null,
-        @Query("to") to: String? = null,
-        @Query("page") page: Int = 1,
-        @Query("pageSize") pageSize: Int = 50,
-    ): Response<PagedResponse<RateHistoryDto>>
+        @Query("range") range: String,
+    ): Response<RateHistoryResponseDto>
 
-    @GET("convert")
+    @retrofit2.http.POST("convert")
+    @Headers("Content-Type: application/json")
     suspend fun convert(
-        @Query("from") from: String,
-        @Query("to") to: String,
-        @Query("amount") amount: BigDecimal,
+        @Body request: ConvertRateRequestDto,
     ): Response<ConversionQuoteDto>
 
     @GET("exchanges")

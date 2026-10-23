@@ -21,14 +21,14 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
-      - name: Lint, ktlint, detekt, tests, and debug APK
+      - name: Lint, ktlint, detekt, tests, and dev APK
         working-directory: android
-        run: ./gradlew --no-daemon lint ktlintCheck detekt testDebugUnitTest assembleDebug
+        run: ./gradlew --no-daemon lintDevDebug ktlintCheck detekt testDebugUnitTest testDevDebugUnitTest assembleDevDebug
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'pull_request'
         with:
           name: android-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/dev/debug/app-dev-debug.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -52,7 +52,9 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/remito-release.keystore
+          REMITO_CERTIFICATE_PINS: ${{ vars.REMITO_CERTIFICATE_PINS }}
         run: |
+          test -n "$REMITO_CERTIFICATE_PINS"
           test -n "$ANDROID_KEYSTORE_BASE64"
           test -n "$ANDROID_KEYSTORE_PASSWORD"
           test -n "$ANDROID_KEY_ALIAS"
@@ -66,10 +68,11 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon bundleRelease
+          REMITO_CERTIFICATE_PINS: ${{ vars.REMITO_CERTIFICATE_PINS }}
+        run: ./gradlew --no-daemon -PREMITO_CERTIFICATE_PINS="$REMITO_CERTIFICATE_PINS" bundleProdRelease
       - uses: actions/upload-artifact@v4
         with:
           name: remito-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          path: android/app/build/outputs/bundle/prodRelease/app-prod-release.aab
           if-no-files-found: error
           retention-days: 90

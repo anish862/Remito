@@ -217,11 +217,35 @@ Run the API with `dotnet run --project backend/Remito.Api`. Open `/health` for h
 
 ```bash
 cd android
-./gradlew assembleDebug testDebugUnitTest
+./gradlew :app:assembleDevDebug :app:installDevDebug
+./gradlew testDebugUnitTest testDevDebugUnitTest
 ./gradlew ktlintCheck detekt
 ```
 
-Open `/android` in Android Studio, create or select an API 26+ emulator, and run the `app` configuration. The shell currently uses placeholder screens and does not make API calls.
+Open `/android` in Android Studio, create or select an API 26+ emulator, and run the `app` configuration with the `devDebug` variant. The dev variant points to the local API at `http://10.0.2.2:5191/api/v1/` (the Android emulator's host bridge). Start the API first and configure its local SQL/Redis settings as described above. The app uses OTP sign-in, then fetches rates and stores them in Room so previously loaded values remain visible offline. On a physical device, override `API_BASE_URL` in `android/app/build.gradle.kts` with a reachable HTTPS development API; do not use the emulator bridge address.
+
+The Android project has `dev`, `staging`, and `prod` product flavors. Debug builds use certificate logging only at BASIC level and do not pin certificates. Release variants require certificate pins at build time:
+
+```bash
+cd android
+./gradlew -PREMITO_CERTIFICATE_PINS='sha256/REPLACE_WITH_APPROVED_SPKI_PIN' :app:assembleProdRelease
+```
+
+Release signing uses `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`; supply them from a protected local/CI secret store. Do not commit keystores, passwords, or production credentials. Release builds enable R8 and do not enable HTTP logging.
+
+### Android production installation
+
+Production Android releases are distributed as signed app bundles, not installed directly onto production devices:
+
+1. Confirm the production API URL and approved certificate SPKI pins with the release/security owner; configure the `prod` flavor URL and `REMITO_CERTIFICATE_PINS` build property.
+2. Build the signed bundle on a protected release runner with keystore values injected through environment secrets:
+
+   ```bash
+   cd android
+   ./gradlew -PREMITO_CERTIFICATE_PINS='sha256/APPROVED_PIN' :app:bundleProdRelease
+   ```
+
+3. Upload `app/build/outputs/bundle/prodRelease/app-prod-release.aab` to the Play Console internal test track, run login/rate/offline/accessibility checks, then promote through the reviewed staged rollout. Keep signing material in the approved Play App Signing/CI secret workflow. Do not sideload a locally signed artifact as a production installation.
 
 ### 4. Admin and infrastructure
 
@@ -246,7 +270,9 @@ Never commit secrets. Use user-secrets locally and Key Vault in Azure.
 | `Firebase:ServiceAccountJson` | API | Firebase Admin service-account JSON for FCM (or `Firebase:ServiceAccount`); omit in Development to use the console sender |
 | `News:Rss:FeedUrl` | Worker | Optional HTTPS RSS/Atom URL; enables the daily import |
 | `IOtpSender` implementation | Backend | Console sender in Development; configure a production SMS/email sender |
-| `API_BASE_URL` | Android `local.properties` / flavour | Per environment |
+| `API_BASE_URL` | Android product flavor | Configured by `dev`, `staging`, and `prod` in `android/app/build.gradle.kts` |
+| `REMITO_CERTIFICATE_PINS` | Android Gradle property | Comma-separated approved `sha256/...` SPKI pins; required for release variants |
+| `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | Android release build | Inject from protected CI/local secret storage; never commit |
 | `google-services.json` | Android | Per flavour, not committed |
 
 ## Testing
@@ -289,7 +315,10 @@ Pipelines run backend build, unit and Testcontainers integration tests, CodeQL a
 | Favourites, rate alerts, FCM, and news | Implemented | User-scoped favourites and 50-item cap, threshold crossing/re-arm jobs, quiet hours/consent/token pruning, curated news, and optional bounded RSS import are implemented. |
 | Endpoint correctness and performance QA | In progress | Exchange comparison hand-calculated fixture tests and OpenAPI contract checks pass. The referenced Q3 QA prompts are not included in this checkout; run them when available. Record the k6 P95 after running the local or staging load test; target is under 200 ms from cache. |
 | Engagement verification and production rollout | Remaining | Engagement unit tests (10) and contract tests pass; SQL Server migration tests pass. The full integration suite still has two failures to resolve: a TestServer response-writer/runtime incompatibility in auth coverage and a Swagger schema assertion. Then complete the Q3-style accuracy audit, provision production secrets and per-exchange allow-lists, deploy through the protected workflow, and capture staging/production load evidence. |
-| Product integrations | Remaining | Android UI/API wiring and the admin portal are not delivered by these backend tasks; validate the licensed provider contracts and production alert recipients before launch. |
+| Product integrations | Remaining | The admin portal remains a placeholder; validate licensed provider contracts and production alert recipients before launch. Android test/release gates and integration of comparison, alerts, and profile remain outstanding. |
+| Android core networking and persistence | In progress | Retrofit contract aligned to latest/history/conversion API, bearer refresh serialization, encrypted token storage, problem-details mapping, TLS pin configuration, retry policy, and Room cache/DAOs are present. Remaining: generated OpenAPI client/codegen, explicit schema migration history, repository fake-API/in-memory Room migration coverage, and app-wide integration for the other features. |
+| Android auth and rates screens | In progress | OTP entry, encrypted access/refresh token persistence, session gating, dashboard, converter, history chart, offline rate cache, reusable UI states, and initial ViewModel/formatter/Compose tests are added. Remaining: run full Android QA on an SDK/emulator, screenshots for light/dark and size matrix, TalkBack/AA audit, error/offline Compose coverage, refresh-token race test execution, and validate dev API OTP delivery. |
+| Android release readiness | Remaining | Configure real staging/production hostnames and certificate pins, provide signing configuration, complete the Play Console review/release process, and finish detekt/lint/build/test gates before distribution. |
 
 ## Engineering standards
 

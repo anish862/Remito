@@ -6,6 +6,8 @@
     <string name="tab_compare_description">Compare exchange rates tab</string>
     <string name="tab_convert">Convert</string>
     <string name="tab_convert_description">Currency converter tab</string>
+    <string name="tab_history">History</string>
+    <string name="tab_history_description">Currency rate history tab</string>
     <string name="tab_alerts">Alerts</string>
     <string name="tab_alerts_description">Rate alerts tab</string>
     <string name="tab_profile">Profile</string>

@@ -1,3 +1,9 @@
 <resources>
     <string name="convert_title">Convert</string>
+    <string name="swap_currencies">Swap</string>
+    <string name="conversion_result">%1$s %2$s</string>
+    <string name="rate_used">Rate used: 1 %2$s = %1$s %3$s</string>
+    <string name="rate_timestamp">Rate timestamp: %1$s</string>
+    <string name="offline_rate_label">Using the last saved rate while offline.</string>
+    <string name="unexpected_error">Something went wrong. Please try again.</string>
 </resources>

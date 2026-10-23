@@ -1,0 +1,17 @@
+<resources>
+    <string name="welcome_title">Welcome to Remito</string>
+    <string name="welcome_description">Sign in to compare currency rates.</string>
+    <string name="email_address">Email address</string>
+    <string name="phone_number">Phone number</string>
+    <string name="use_email">Use email</string>
+    <string name="use_phone">Use phone</string>
+    <string name="send_code">Send verification code</string>
+    <string name="code_sent">Enter the verification code sent to you.</string>
+    <string name="verification_code">Verification code</string>
+    <string name="verify_code">Verify and sign in</string>
+    <string name="auth_loading">Please wait</string>
+    <string name="enter_destination">Enter an email address or phone number.</string>
+    <string name="enter_code">Enter the verification code.</string>
+    <string name="logout">Sign out</string>
+    <string name="authentication_error">Authentication failed. Please try again.</string>
+</resources>

@@ -133,6 +133,47 @@ data class MarketRateDto(
     val isStale: Boolean,
 )
 
+@JsonClass(generateAdapter = false)
+data class LatestRateItemDto(
+    val currency: String,
+    val rate: BigDecimal,
+    val change24HoursPercent: BigDecimal,
+    val lastUpdated: String,
+    val isStale: Boolean,
+)
+
+@JsonClass(generateAdapter = false)
+data class LatestRatesResponseDto(
+    val base: String,
+    val rates: List<LatestRateItemDto>,
+)
+
+@JsonClass(generateAdapter = false)
+data class RateHistoryPointDto(
+    val timestamp: String,
+    val rate: BigDecimal,
+)
+
+@JsonClass(generateAdapter = false)
+data class RateHistoryResponseDto(
+    val pair: String,
+    val range: String,
+    val points: List<RateHistoryPointDto>,
+    val minimum: BigDecimal,
+    val maximum: BigDecimal,
+    val open: BigDecimal,
+    val close: BigDecimal,
+)
+
+@JsonClass(generateAdapter = false)
+data class ConvertRateRequestDto(
+    val amount: BigDecimal,
+    @field:Json(name = "from")
+    val fromCurrency: String,
+    @field:Json(name = "to")
+    val toCurrency: String,
+)
+
 enum class HistoryBucket {
     @Json(name = "1D")
     ONE_DAY,
@@ -160,12 +201,15 @@ data class RateHistoryDto(
 
 @JsonClass(generateAdapter = false)
 data class ConversionQuoteDto(
-    val fromCurrency: String,
-    val toCurrency: String,
     val amount: BigDecimal,
+    @field:Json(name = "from")
+    val fromCurrency: String,
+    @field:Json(name = "to")
+    val toCurrency: String,
     val rate: BigDecimal,
+    @field:Json(name = "result")
     val convertedAmount: BigDecimal,
-    val fetchedAt: String,
+    val timestamp: String,
     val isStale: Boolean,
 )
 

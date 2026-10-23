@@ -25,9 +25,33 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5191/api/v1/\"")
+        }
+        create("staging") {
+            dimension = "environment"
+            buildConfigField("String", "API_BASE_URL", "\"https://api.staging.remito.example/api/v1/\"")
+        }
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "API_BASE_URL", "\"https://api.remito.example/api/v1/\"")
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField(
+            "String",
+            "CERTIFICATE_PINS",
+            "\"${providers.gradleProperty("REMITO_CERTIFICATE_PINS").orElse("").get()}\"",
+        )
     }
 
     signingConfigs {
@@ -45,7 +69,8 @@ android {
     buildTypes {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
@@ -58,15 +83,21 @@ dependencies {
     implementation(project(":feature:dashboard"))
     implementation(project(":feature:compare"))
     implementation(project(":feature:convert"))
+    implementation(project(":feature:history"))
+    implementation(project(":feature:auth"))
     implementation(project(":feature:alerts"))
     implementation(project(":feature:profile"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
+    implementation(libs.room.runtime)
+    implementation(libs.retrofit)
     kapt(libs.hilt.compiler)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit.jupiter)

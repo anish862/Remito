@@ -1,0 +1,9 @@
+<resources>
+    <string name="relative_just_now">just now</string>
+    <string name="relative_minute_singular">%1$s minute ago</string>
+    <string name="relative_minute_plural">%1$s minutes ago</string>
+    <string name="relative_hour_singular">%1$s hour ago</string>
+    <string name="relative_hour_plural">%1$s hours ago</string>
+    <string name="relative_day_singular">%1$s day ago</string>
+    <string name="relative_day_plural">%1$s days ago</string>
+</resources>
