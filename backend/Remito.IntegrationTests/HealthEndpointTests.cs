@@ -60,7 +60,7 @@ public sealed class HealthEndpointTests : IAsyncLifetime
         Assert.True(paths.TryGetProperty("/api/v1/favourites", out var favourites));
         Assert.True(paths.TryGetProperty("/api/v1/alerts", out var alerts));
         Assert.True(paths.TryGetProperty("/api/v1/news", out var news));
-        Assert.True(paths.TryGetProperty("/api/v1/me/notification-preferences", out var notificationPreferences));
+        Assert.True(paths.TryGetProperty("/api/v1/notification-preferences", out var notificationPreferences));
         Assert.True(latest.TryGetProperty("get", out _));
         Assert.True(history.TryGetProperty("get", out _));
         Assert.True(convert.TryGetProperty("post", out var convertPost));
