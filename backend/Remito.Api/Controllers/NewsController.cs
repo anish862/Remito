@@ -9,15 +9,6 @@ namespace Remito.Api.Controllers;
 [Route("api/v{version:apiVersion}/news")]
 public sealed class NewsController(INewsService newsService) : ControllerBase
 {
-    /// <summary>Serves the legacy ad-slot placeholder route until the ad inventory is implemented.</summary>
-    [HttpGet("/api/v{version:apiVersion}/ads/slots/{slot}")]
-    [ProducesResponseType(StatusCodes.Status501NotImplemented)]
-    public IActionResult AdSlot(string slot, CancellationToken cancellationToken) =>
-        Problem(
-            statusCode: StatusCodes.Status501NotImplemented,
-            title: "Not implemented",
-            detail: "This API endpoint is defined by the contract but is not implemented yet.");
-
     /// <summary>Lists published news items, newest first.</summary>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<NewsResponse>>(StatusCodes.Status200OK)]

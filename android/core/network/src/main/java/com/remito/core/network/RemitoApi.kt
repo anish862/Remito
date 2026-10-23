@@ -188,10 +188,20 @@ interface RemitoApi {
         @Body request: NotificationPreferencesUpdate,
     ): Response<NotificationPreferencesDto>
 
+    @POST("analytics/events")
+    suspend fun ingestAnalyticsEvent(
+        @Body request: AnalyticsEventRequest,
+    ): Response<Unit>
+
     @GET("ads/slots/{slot}")
     suspend fun adSlot(
         @Path("slot") slot: String,
-    ): Response<List<AdCreativeDto>>
+    ): Response<AdSlotResponseDto>
+
+    @POST("ads/events")
+    suspend fun recordAdEvent(
+        @Body request: AdEventRequest,
+    ): Response<Unit>
 
     @GET("admin/exchanges")
     suspend fun adminExchanges(

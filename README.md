@@ -33,6 +33,7 @@ These apply to every feature and must not be broken:
 4. Every rate shows a last-updated time, with a stale warning when data is old.
 5. Compare and redirect screens show: *"Remito does not process payments. Transactions are completed on the chosen licensed exchange."*
 6. No personal data in redirect URLs, analytics events or logs.
+7. Ads are explicitly labelled, never shown in the redirect confirmation sheet, and remain contextual unless consent-aware targeting is implemented.
 
 ## Features (Phase 1 MVP)
 
@@ -79,7 +80,7 @@ Backend is a modular monolith with clean-architecture layers (Domain, Applicatio
 ```
 /backend   Remito.sln (Api, Application, Domain, Infrastructure, Workers, tests)
 /android   Android project (app, core:*, feature:*)
-/admin     Step 14 placeholder
+/admin     Admin portal status and API notes (Razor Pages/Blazor UI is not yet implemented)
 /infra     Azure Bicep modules and dev/staging/prod parameters
 /docs      architecture.md, adr/, progress.md
 ```
@@ -147,6 +148,14 @@ Configure each exchange's `AppDeepLink`, `PlayStoreUrl`, `GatewayUrl`, and `Allo
 Authenticated users can manage favourites at `GET|POST /api/v1/favourites` and `DELETE /api/v1/favourites/{id}` (up to 50, duplicate adds are idempotent), and rate alerts at `GET|POST /api/v1/alerts`, `PATCH|DELETE /api/v1/alerts/{id}`. The alert worker checks fresh Redis quotes each minute, notifies once per threshold crossing, and re-arms after the rate crosses back. Daily summaries run at 08:00 UTC. `GET|PUT /api/v1/notification-preferences` controls alert/digest delivery and quiet-hour bounds in UTC minutes after midnight. Devices are registered through `POST /api/v1/devices` and can be removed or listed by the authenticated owner. Firebase Admin credentials enable production FCM; in Development the console sender is used. Invalid device tokens are pruned. Marketing notifications require marketing consent, and push data must not include personal information.
 
 The public news feed is `GET /api/v1/news?page=1&pageSize=20`; item detail is `GET /api/v1/news/{slug}`. Admin-curated list and save endpoints are under `/api/v1/admin/news`. Optional RSS/Atom import is enabled by `News:Rss:FeedUrl` (HTTPS only, redirects disabled, response capped at 2 MB and 25 entries) and runs daily. All routes are versioned under `/api/v1`; Swagger is available at `/swagger` in non-production environments.
+
+### Ads and analytics (API foundation)
+
+Campaign managers with the `Admin` or `AdsManager` role can create a scheduled campaign through `POST /api/v1/admin/ad-campaigns`. The request currently accepts one HTTPS image URL and destination URL; it does not upload creatives to Blob Storage. `GET /api/v1/admin/ad-campaigns` is available to all four admin roles. Ad delivery is disabled by default outside Development; configure `Ads:Enabled` and `Ads:DailyFrequencyCap` to control it. Authenticated app users can request `GET /api/v1/ads/slots?slot=banner` (also `native`, `interstitial`, or `rewarded`). Invalid slots—including `redirect-confirmation`—are rejected. Responses carry the `Ad` label and are always contextual (`isPersonalized: false`); no marketing consent is used to infer ad targeting. A user's creative is omitted after the configured rolling 24-hour impression cap. `POST /api/v1/ads/events` accepts only impression/click events and stores the events in the existing impression/audit tables and App Insights.
+
+The Android network layer has one typed `AnalyticsTracker` wrapper. It uses a persisted random UUID installation identifier; the backend accepts only UUID v4 identifiers, hashes them before App Insights ingestion, and restricts names to `screen_view`, `compare_run`, `exchange_selected`, `redirect_started`, `redirect_returned`, `alert_created`, `notification_opened`, `ad_impression`, and `ad_click`. No arbitrary event properties are accepted or sent. The wrapper is not yet wired into every screen/event, and funnel queries/dashboards are still outstanding.
+
+The current campaign API is not the requested admin portal. Vendor workflows, fee CSV preview/import, manual overrides, campaign budgets/targeting/Blob uploads, featured listings, news editing, CSV reports, masked user/device lookup, a browser login/UI, and an operational remote kill switch remain to be built. API writes use JWT bearer authorization and record campaign/event writes in `AuditLog`; no cookie-authenticated admin UI exists yet. CORS is closed unless exact origins are added to `Cors:AllowedOrigins`. A future browser portal must use server-side RBAC and antiforgery protection for form writes.
 
 To measure local cached latest-rate latency, install [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/) and run the Development API and rate worker as described below. The test warms the route under a 20-virtual-user load and fails if P95 reaches 200 ms:
 
@@ -257,7 +266,7 @@ Production Android releases are distributed as signed app bundles, not installed
 
 ### 4. Admin and infrastructure
 
-`/admin` remains a placeholder. Infrastructure modules, environment parameters, pipeline setup, and rollback instructions are documented in [`docs/infra.md`](docs/infra.md). Azure names and GitHub OIDC/environment configuration must be set for your subscription before deploying.
+`/admin` contains scope and progress notes; a browser portal remains unimplemented. Infrastructure modules, environment parameters, pipeline setup, and rollback instructions are documented in [`docs/infra.md`](docs/infra.md). Azure names and GitHub OIDC/environment configuration must be set for your subscription before deploying.
 
 ## Configuration
 
@@ -271,6 +280,8 @@ Never commit secrets. Use user-secrets locally and Key Vault in Azure.
 | `Auth:OtpHashKey` | Backend | HMAC key for destination and OTP hashes; use Key Vault in cloud |
 | `Auth:RefreshTokenLifetimeDays` | Backend | Rotating refresh token lifetime |
 | `Auth:TermsVersion`, `Auth:PrivacyVersion` | Backend | Current consent document versions |
+| `Ads:Enabled`, `Ads:DailyFrequencyCap` | API | Server-side ad delivery switch and rolling 24-hour cap; disabled by default outside Development |
+| `Cors:AllowedOrigins` | API | Exact browser origins; empty by default (no cross-origin access) |
 | `RateProviders:*` | Backend | Market-rate API key and per-exchange feed settings |
 | `Redirect:SigningKey` | API | At least 32 random bytes; signs click identifiers |
 | `PartnerPostback:SecretsJson` | API | JSON map of exchange ID to unique HMAC secret; can alternatively use `PartnerPostback:Secrets:{exchangeId}` |
@@ -322,9 +333,12 @@ Pipelines run backend build, unit and Testcontainers integration tests, CodeQL a
 | Exchange listing and comparison API | Implemented | Active exchange quotes, amount-band fee calculation, deterministic ranking/filtering, stale warnings, labelled sponsored slot, disclaimer, and 60-second corridor/amount cache are covered by fixture-driven tests. |
 | Redirects and partner attribution | Implemented | Allow-listed destinations, privacy-safe ULID clicks, timestamped HMAC postbacks, idempotent conversions, commission ledger, CSV reconciliation, and monthly reports are implemented. Redirect URL validation rejects unapproved hosts, attribution-key collisions, and query keys that could expose personal data or tokens; regression tests cover these cases. |
 | Favourites, rate alerts, FCM, and news | Implemented | User-scoped favourites and 50-item cap, threshold crossing/re-arm jobs, quiet hours/consent/token pruning, curated news, and optional bounded RSS import are implemented. |
+| Ads delivery and analytics foundation | Partial | Scheduled single-creative campaign API, role checks, audit events, labelled contextual ad selection, rolling frequency caps, feature configuration, typed analytics taxonomy, UUIDv4 hashing, and Android tracker wrapper are present. No creative upload, budget/targeting, consent-based personalized selection, Android ad rendering/event wiring, funnel queries, or dashboards yet. |
+| Admin portal and partner operations | Remaining | There is no Razor Pages/Blazor UI. Exchange/vendor status, fee CSV validation/upload, manual override UX, news/featured management, referral CSV exports, masked lookups, and audit viewer are still required. |
+| MASVS/STRIDE/VAPT and observability completion | Remaining | API rate limiting, security headers, explicit CORS allowlisting, and API-side ad disablement are in place. Android pinning/R8/backup restrictions are pre-existing. Complete the remaining MASVS L1/selected L2 checks, threat model/VAPT scope/review, secret rotation, container/dependency scans, funnel dashboards and Bicep alert coverage before release. |
 | Endpoint correctness and performance QA | In progress | Exchange comparison hand-calculated fixture tests and OpenAPI contract checks pass. The referenced Q3 QA prompts are not included in this checkout; run them when available. Record the k6 P95 after running the local or staging load test; target is under 200 ms from cache. |
 | Engagement verification and production rollout | Remaining | Engagement unit tests (10) and contract tests pass; SQL Server migration tests pass. The full integration suite still has two failures to resolve: a TestServer response-writer/runtime incompatibility in auth coverage and a Swagger schema assertion. Then complete the Q3-style accuracy audit, provision production secrets and per-exchange allow-lists, deploy through the protected workflow, and capture staging/production load evidence. |
-| Product integrations | Remaining | The admin portal remains a placeholder; validate licensed provider contracts and production alert recipients before launch. Android end-to-end device QA for engagement features remains outstanding. |
+| Product integrations | Remaining | Admin UI and fee operations remain unimplemented; validate licensed provider contracts and production alert recipients before launch. Android end-to-end device QA for engagement features remains outstanding. |
 | Android core networking and persistence | In progress | Retrofit contract aligned to latest/history/conversion API, bearer refresh serialization, encrypted token storage, problem-details mapping, TLS pin configuration, retry policy, and Room cache/DAOs are present. Remaining: generated OpenAPI client/codegen, explicit schema migration history, repository fake-API/in-memory Room migration coverage, and app-wide integration for the other features. |
 | Android auth and rates screens | In progress | OTP entry, encrypted access/refresh token persistence, session gating, dashboard, converter, history chart, offline rate cache, reusable UI states, and initial ViewModel/formatter/Compose tests are added. Remaining: run full Android QA on an SDK/emulator, screenshots for light/dark and size matrix, TalkBack/AA audit, error/offline Compose coverage, refresh-token race test execution, and validate dev API OTP delivery. |
 | Android comparison and redirects | In progress | Compare screen supports OMR-INR/amount selection, ranked and sponsored offers, best-rate flags from the API, cached stale results, offer details, confirmation disclosure, and app/Play Store/Custom Tab fallback. Backend redirect response now includes an allow-listed gateway fallback. Remaining: run device UI/fallback tests, screenshot matrix, production analytics provider wiring, and the redirect URL/privacy checklist. |

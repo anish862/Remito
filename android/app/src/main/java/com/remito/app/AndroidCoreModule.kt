@@ -6,6 +6,7 @@ import com.remito.core.common.UserSettings
 import com.remito.core.common.UserSettingsStore
 import com.remito.core.database.RateDao
 import com.remito.core.database.RemitoDatabase
+import com.remito.core.network.AnalyticsTracker
 import com.remito.core.network.EncryptedTokenStore
 import com.remito.core.network.EngagementRepository
 import com.remito.core.network.NetworkClient
@@ -69,6 +70,13 @@ object AndroidCoreModule {
             )
         return retrofit.create(RemitoApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun analyticsTracker(
+        @ApplicationContext context: Context,
+        api: RemitoApi,
+    ): AnalyticsTracker = AnalyticsTracker(context, api)
 
     @Provides
     @Singleton
